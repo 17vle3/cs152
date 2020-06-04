@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "y.tab.h"
-#include "t.tab.h"
 #include "heading.h"
 
 using namespace std;
