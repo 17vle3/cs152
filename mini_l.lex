@@ -56,8 +56,8 @@ return		return RETURN; currPos += yyleng;
 ","		return COMMA; currPos += yyleng;
 "("		return L_PAREN; currPos += yyleng;
 ")"		return R_PAREN; currPos += yyleng;
-"["		return L_SQUARE; currPos += yyleng;
-"]"		return R_SQUARE; currPos += yyleng;
+"["		return L_SQUARE_BRACKET; currPos += yyleng;
+"]"		return R_SQUARE_BRACKET; currPos += yyleng;
 ":="		return ASSIGN; currPos += yyleng;
 
 [0-9]+					   currPos += yyleng; yylval.val = atof(yytext); return NUMBER;
