@@ -1,11 +1,3 @@
-/* 
- * Description: Recognize the 32-bit hexadecimal integer from stdin
- * Pattern: 0[xX]([0-9a-fA-F]{1,8})
-yyleng
-IDENT_VAR_ERR	()({LETTER}|{DIGIT}|[_])*[_]+
-
- */
-
 %{
 #include "heading.h"
 #include "y.tab.h"
@@ -79,10 +71,3 @@ return              return(RETURN);cursor_pos += yyleng;
 {IDENT_VAR}	        /*printf("IDENT -> %s\n",yytext)*/;strcpy(yylval.str_val,yytext);return(IDENT);cursor_pos += yyleng;  
 .		            printf("Error at line %d, column %d: unrecognized symbol \"%s\"\n",line_cnt,cursor_pos,yytext);exit(0);
 %%
-
-/*
-*/
-//int main(int argc, char **argv)
-//{
-//  yylex();
-//}
