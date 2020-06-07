@@ -3,7 +3,10 @@
 
 %{
 #include "heading.h"
-void yyerror(const char* s);
+//#include <stdio.h>
+//#define YY_NO_UNPUT
+//int yyparse();
+int yyerror(const char* s);
  extern int currLine;
  extern int currPos;
 int yylex(void);
@@ -46,6 +49,26 @@ stack<Loop> loop_stack;
     struct Terminal Terminal;
 
 
+//    struct {
+//       stringstream *code;
+//       //location
+//       string *place;
+//       string *value;
+//       string *offset;
+//       // branches
+//       string *op;
+//       string *begin;
+//       string *parent;
+//       string *end;
+//       // type
+//       //uint val;
+//       Type type;
+//       int length;
+//       string *index;
+//       // idents and vars
+//       vector<string> *ids;
+//       vector<Var> *vars; 
+//    } Terminal;
 
 
 }
@@ -1068,12 +1091,11 @@ void check_map_dec(string name){
 //    return 0;
 //}
 //
+
 void yyerror(const char *s) {
    printf("** Line %d, position %d: %s\n", currLine, currPos, s);
    exit(1);
 }
-
-
 int main(int argc, char **argv) {
 
     if ( (argc > 1) && (myin = fopen(argv[1],"r")) == NULL){
@@ -1102,3 +1124,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
