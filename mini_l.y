@@ -1093,6 +1093,7 @@ void check_map_dec(string name){
 //
 
 int yyerror(const char *s) {
+   success = false;
    printf("** Line %d, position %d: %s\n", currLine, currPos, s);
    return -1;
 }
