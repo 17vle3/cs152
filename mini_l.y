@@ -80,13 +80,13 @@ stack<Loop> loop_stack;
 //%define api.value.type variant
 //%define parse.assert
 
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
+%token FUNCTION BEGINPARAMS ENDPARAMS BEGINLOCALS ENDLOCALS BEGINBODY ENDBODY
 %token INTEGER ARRAY OF 
 %token IF THEN ENDIF ELSE WHILE DO BEGINLOOP ENDLOOP CONTINUE 
 %token READ WRITE RETURN
 %token AND OR NOT TRUE FALSE 
 %token SUB ADD MULT DIV MOD EQ NEQ LT GT LTE GTE 
-%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
+%token SEMICOLON COLON COMMA LPAREN RPAREN LSQUARE RSQUARE ASSIGN
 %token NUMBER IDENT
 
 %type <int_val> NUMBER
@@ -116,8 +116,8 @@ program:    function program {
               }
             ;
 
-function:   FUNCTION b_func SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2 {
-                //printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2\n");
+function:   FUNCTION b_func SEMICOLON BEGINPARAMS decl_loop ENDPARAMS BEGINLOCALS decl_loop ENDLOCALS BEGINBODY statement SEMICOLON function_2 {
+                //printf("function -> FUNCTION IDENT SEMICOLON BEGINPARAMS decl_loop ENDPARAMS BEGINLOCALS decl_loop ENDLOCALS BEGINBODY statement SEMICOLON function_2\n");
                 //IDENT = $2
                 //decl_loop = $5
                 //decl_loop = $8
@@ -160,8 +160,8 @@ function_2: statement SEMICOLON function_2 {
                 $$.code = $1.code;
                 *($$.code) << $3.code->str();
               } 
-            | END_BODY {
-                //printf("function_2 -> END_BODY\n");
+            | ENDBODY {
+                //printf("function_2 -> ENDBODY\n");
                 $$.code = new stringstream();
                 *($$.code) << "endfunc\n";
               }
@@ -299,8 +299,8 @@ declaration_2:  COMMA IDENT declaration_2 {
                 }
                 ;
 
-declaration_3:  ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF{
-                    //printf("declaration_3 -> ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF\n");
+declaration_3:  ARRAY LSQUARE NUMBER RSQUARE OF{
+                    //printf("declaration_3 -> ARRAY LSQUARE NUMBER RSQUARE OF\n");
                     $$.code = new stringstream();
                     $$.vars = new vector<Var>();
                     $$.type = INT_ARR;
@@ -646,8 +646,8 @@ relation_exp_s: expression comp expression{
                     $$.place = new string();
                     *$$.place = "0";
                   }
-                | L_PAREN bool_exp R_PAREN{
-                    //cout << "relation_exp_s -> L_PAREN bool_exp R_PAREN\n" << endl;
+                | LPAREN bool_exp RPAREN{
+                    //cout << "relation_exp_s -> LPAREN bool_exp RPAREN\n" << endl;
                     $$.code = $2.code;
                     $$.place = $2.place;
                 }
@@ -867,15 +867,15 @@ term_2:         var{
                     $$.place = new string();
                     *$$.place = to_string($1);
                   }
-                | L_PAREN expression R_PAREN{
-                    //printf("term_2 -> L_PAREN expression R_PAREN\n");
+                | LPAREN expression RPAREN{
+                    //printf("term_2 -> LPAREN expression RPAREN\n");
                     $$.code = $2.code;
                     $$.place = $2.place;
                   }
                 ;
 
-term_3:         IDENT L_PAREN term_31 R_PAREN{
-                    //printf("term_3 -> IDENT L_PAREN term_31 R_PAREN\n");
+term_3:         IDENT LPAREN term_31 RPAREN{
+                    //printf("term_3 -> IDENT LPAREN term_31 RPAREN\n");
                     //TODO: check if var was declared?
                     $$.code = $3.code;
                     $$.place = new_temp();
@@ -940,9 +940,9 @@ var:            IDENT var_2{
                 }
                 ;
 
-var_2:          L_SQUARE_BRACKET expression R_SQUARE_BRACKET{
+var_2:          LSQUARE  expression RSQUARE {
                     //TODO: check if var was declared?
-                    //printf("var_2 -> L_SQUARE_BRACKET expression R_SQUARE_BRACKET\n");
+                    //printf("var_2 -> LSQUARE  expression RSQUARE\n");
                     $$.code = $2.code;
                     $$.place = NULL;
                     $$.index = $2.place;
