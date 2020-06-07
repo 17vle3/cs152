@@ -1,9 +1,8 @@
-/* Mini Calculator */
-/* calc.y */
-
 %{
 #include "heading.h"
-int yyerror(const char* s);
+void yyerror(const char *s);
+extern int currLine;
+extern int currPos;
 int yylex(void);
 stringstream *all_code;
 FILE * myin;
@@ -1013,14 +1012,10 @@ void check_map_dec(string name){
     }
 }
 
-int yyerror(const char *s)
-{
-    extern int currLine;
-    extern int currPos;
+int yyerror(const char *s){
     success = false;
-    printf(">>> Line %d, position %d: %s\n",currLine,currPos,s);
-    return -1;
-    //return yyerror(string(s));
+    printf("** Line %d, position %d: %s\n", currLine, currPos, s);
+    exit(1);
 }
 int main(int argc, char **argv) {
 
