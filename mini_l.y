@@ -1,919 +1,1130 @@
+/* Mini Calculator */
+/* calc.y */
+
 %{
-#define YY_NO_UNPUT
-#include <stdio.h>
-#include <string>
-#include <cstring>
-#include <vector>
-#include <set>
-#include <stdlib.h>
-#include <stdbool.h>
-#include "y.tab.h"
 #include "heading.h"
-
-using namespace std;
-
-void yyerror(const char* s);
+//#include <stdio.h>
+//#define YY_NO_UNPUT
+//int yyparse();
+int yyerror(const char* s);
 int yylex(void);
+stringstream *all_code;
+FILE * myin;
+void print_test(string output);
+void print_test(stringstream o);
+string gen_code(string *res, string op, string *val1, string *val2);
+string to_string(char* s);
+string to_string(int s);
+int tempi = 0;
+int templ = 0;
+string * new_temp();
+string * new_label();
+string go_to(string *s);
+string dec_label(string *s);
+string dec_temp(string *s);
+void expression_code( Terminal &DD,  Terminal D2, Terminal D3,string op);
+bool success = true;
+bool no_main = false;
+void push_map(string name, Var v);
+bool check_map(string name);
+void check_map_dec(string name);
 
-
-extern int currLine;
-extern int currPos;
-extern char* yytext;
-extern char* programName;
-  
-int labelCount = 0;
-int tempCount = 0;
-int paramCount = 0;
-
-string new_label(){
-  string x = "__label__";
-  x += to_string(labelCount);
-  labelCount += 1;
-  return x;
-}
-
-string new_temp(){
-  string x = "__temp__";
-  x += to_string(tempCount);
-  tempCount += 1;
-  return x;
-}
-
-bool isReserved = false;
-
-set<string> functionSet;
-set<string> variableSet;
-string errors;
-vector<string> reservedWords = {"FUNCTION", "BEGIN_PARAMS", "END_PARAMS", "BEGIN_LOCALS", "END_LOCALS", "BEGIN_BODY", "END_BODY", "INTEGER",
-    "ARRAY", "OF", "IF", "THEN", "ENDIF", "ELSE", "WHILE", "DO", "FOREACH", "IN", "BEGINLOOP", "ENDLOOP", "CONTINUE", "READ", "WRITE", "AND", "OR", 
-    "NOT", "TRUE", "FALSE", "RETURN", "SUB", "ADD", "MULT", "DIV", "MOD", "EQ", "NEQ", "LT", "GT", "LTE", "GTE", "L_PAREN", "R_PAREN", "L_SQUARE_BRACKET",
-    "R_SQUARE_BRACKET", "COLON", "SEMICOLON", "COMMA", "ASSIGN", "function", "Ident", "beginparams", "endparams", "beginlocals", "endlocals", "integer", 
-    "beginbody", "endbody", "beginloop", "endloop", "if", "endif", "foreach", "continue", "while", "else", "read", "do", "write"};
+map<string,Var> var_map;
+stack<Loop> loop_stack;
 
 %}
 
 %union{
-  int int_val;
-  char*	op_val;
-  
-  struct statement_semval {
-	 char *code;
-	 char *result_id;
-	 char *label;
-	 char *arr_size;
-	 char *arr_name;
-	 bool is_array;
-  } s;
+    int       int_val;
+    char str_val[256];
 
-  struct expression_semval {
-	 char *code;
-	 char *result_id;
-	 char *arr_size;
-	 char *arr_name;
-	 bool is_array;
-  } e;
+    //enum Type {INT, INT_ARR};
 
-  struct comp_semval {
-	 char *optr;
-  } c;
+    struct {
+        stringstream *code;
+    }NonTerminal;
+
+    struct Terminal Terminal;
+
+
+//    struct {
+//       stringstream *code;
+//       //location
+//       string *place;
+//       string *value;
+//       string *offset;
+//       // branches
+//       string *op;
+//       string *begin;
+//       string *parent;
+//       string *end;
+//       // type
+//       //uint val;
+//       Type type;
+//       int length;
+//       string *index;
+//       // idents and vars
+//       vector<string> *ids;
+//       vector<Var> *vars; 
+//    } Terminal;
+
 
 }
 
-%start prog_start
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE FOR WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
-%token SUB ADD MULT DIV MOD EQ NEQ LT GT LTE GTE SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
-%token <int_val> NUMBER
-%token <op_val> IDENT
+%error-verbose
+//%skeleton "lalr1.cc"
+//%require "3.0.4"
+//%define api.token.constructor
+//%define api.value.type variant
+//%define parse.assert
 
-%type <s> prog_start progInner function funcInnerLocals funcInnerTwo funcInnerParams statement stateInnerOne stateInnerTwo
-%type <e> bool_expr var addFunc ident termInnerOne expression multiplicative_expr term declaration decInner relation_expr relation_and_expr
-%type <c> comp
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
+%token INTEGER ARRAY OF 
+%token IF THEN ENDIF ELSE WHILE DO BEGINLOOP ENDLOOP CONTINUE 
+%token READ WRITE RETURN
+%token AND OR NOT TRUE FALSE 
+%token SUB ADD MULT DIV MOD EQ NEQ LT GT LTE GTE 
+%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
+%token NUMBER IDENT
+
+%type <int_val> NUMBER
+%type <str_val> IDENT
+
+
+%type <NonTerminal> program
+%type <Terminal> decl_loop stmt_loop function function_2 declaration declaration_2 declaration_3 statement  statement_1 statement_2   statement_21 statement_3   statement_4   statement_5   statement_51  statement_6   statement_61  bool_exp      bool_exp2     rel_and_exp   rel_and_exp2  relation_exp   relation_exp_s comp          expression    expression_2  mult_expr     mult_expr_2   term          term_2        term_3        term_31       term_32       var           var_2         b_loop b_func
+
+
 %%
 
-prog_start:     progInner {
-                  for (auto it=variableSet.begin(); it != variableSet.end(); ++it) 
-                    cout << ' ' << *it; 
-                    cout << endl;
+program:    function program {
+                //printf("program -> function program\n");
+                $$.code = $1.code;
+                *($$.code) << $2.code->str();
+                if(!no_main){
+                    yyerror("ERROR: main function not defined.");
+                }
+                //print_test("program:\n" + $$.code->str());
 
-                  // Check if function main is declared (test 03)
-                  if (functionSet.count("main") == 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": function main not declared\n";
-                    errors += errormessage;
-                  }
+                all_code = $$.code;
+              } 
+            | {
+                //printf("program -> EPSILON\n");
+                $$.code = new stringstream();
+              }
+            ;
 
-                  // Check if variable name is same as program name (test 04)
-                  // cout << programName << endl;
-                  if (variableSet.count(programName) != 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": declared program name as variable\n";
-                    errors += errormessage;
-                  }
+function:   FUNCTION b_func SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2 {
+                //printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2\n");
+                //IDENT = $2
+                //decl_loop = $5
+                //decl_loop = $8
+                //statement = $11
+                //func_2 = $13
+                $$.code = new stringstream(); 
+                string tmp = *$2.place;
+                if( tmp.compare("main") == 0){
+                    no_main = true;
+                }
+                *($$.code)  << "func " << tmp << "\n" << $5.code->str() << $8.code->str();
+                for(int i = 0; i < $5.vars->size(); ++i){
+                    if((*$5.vars)[i].type == INT_ARR){
+                        yyerror("Error: cannot pass arrays to function.");
+                    }
+                    else if((*$5.vars)[i].type == INT){
+                        *($$.code) << "= " << *((*$5.vars)[i].place) << ", " << "$"<< to_string(i) << "\n";
+                    }else{
+                        yyerror("Error: invalid type");
+                    }
+                }
+                 *($$.code) << $11.code->str() << $13.code->str();
+            }
+            ;
+b_func: IDENT {
+            //cout << "b_func" << endl;
+            string tmp = $1;
+            Var myf = Var();
+            myf.type = FUNC;
+            if(!check_map(tmp)){
+                push_map(tmp,myf); 
+            }
+            $$.place = new string();
+            *$$.place = tmp;
+            //cout << "end b_func" << endl;
+        };
 
-                  // Check if any errors --> end program and output errors if so
-                  if (errors.size() != 0) {
-                    cout << errors;
-                    exit(1);
-                  } else {
-                    cout << $1.code;
-                  }
+function_2: statement SEMICOLON function_2 {
+                //printf("function_2 -> statement SEMICOLON function_2\n");
+                $$.code = $1.code;
+                *($$.code) << $3.code->str();
+              } 
+            | END_BODY {
+                //printf("function_2 -> END_BODY\n");
+                $$.code = new stringstream();
+                *($$.code) << "endfunc\n";
+              }
+            ;
+
+decl_loop:  declaration SEMICOLON decl_loop {
+                    //printf("decl_loop -> declaration SEMICOLON decl_loop\n");
+                $$.code = $1.code;
+                $$.vars = $1.vars;
+                for( int i = 0; i < $3.vars->size(); ++i){
+                    $$.vars->push_back((*$3.vars)[i]);
+                }
+                *($$.code) << $3.code->str();
+                } 
+            | {
+                //printf("decl_loop -> EPSILON\n");
+                $$.code = new stringstream();
+                $$.vars = new vector<Var>();
+              }
+            ;
+
+stmt_loop:  statement SEMICOLON stmt_loop {
+                //printf("stmt_loop -> statement SEMICOLON stmt_loop\n");
+                $$.code = $1.code;
+                *($$.code) << $3.code->str();
+              } 
+            | {
+                //printf("stmt_loop -> EPSILON\n");
+                $$.code = new stringstream();
+              }
+            ;
+
+declaration:    IDENT declaration_2 {
+                    //printf("declaration -> IDENT declaration_2\n");
+                    $$.code = $2.code;
+                    $$.type = $2.type;
+                    $$.length = $2.length;
+
+                    $$.vars = $2.vars;
+                    Var v = Var();
+                    v.type = $2.type;
+                    v.length = $2.length;
+                    v.place = new string();
+                    *v.place = $1;
+                    $$.vars->push_back(v);
+                    if($2.type == INT_ARR){
+                        if($2.length <= 0){
+                            yyerror("ERROR: invalid array size <= 0");
+                        }
+                        *($$.code) << ".[] " << $1 << ", " << $2.length << "\n";
+                        string s = $1;
+                        if(!check_map(s)){
+                            push_map(s,v);
+                        }
+                        else{
+                            string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
+                            yyerror(tmp.c_str());
+                        }
+                    }
+
+                    else if($2.type == INT){
+                        *($$.code) << ". " << $1 << "\n";
+                        string s = $1;
+                        if(!check_map(s)){
+                            push_map(s,v);
+                        }
+                        else{
+                            string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
+                            yyerror(tmp.c_str());
+                        }
+                        //if(var_map.find($1) == var_map.end()){
+                        //    string s = $1;
+                        //    var_map[s] = v;
+                        //}
+                        //else{
+                        //    yyerror("");
+                        //}
+                    }else{
+                            yyerror("ERROR: invalid type");
+                    }
+                    //print_test(to_string($$.vars->size()));
+                    //for(int i = 0; i < $$.vars->size(); ++i){
+                    //    print_test("type:" + to_string((*$$.vars)[i].type) + "\nlength:" + to_string((*$$.vars)[i].length) + "\nplace:" + *(*$$.vars)[i].place);
+                    //}
+
                 }
                 ;
-progInner:      function progInner {
-                  ostringstream oss;
-                  oss << $1.code << $2.code;
-                  $$.code = strdup(oss.str().c_str());
+
+declaration_2:  COMMA IDENT declaration_2 {
+                    //printf("declaration_2 -> COMMA IDENT declaration_2\n");
+                    $$.code = $3.code;
+                    $$.type = $3.type;
+                    $$.length = $3.length;
+                    //TODO: add variable to symbol_table
+                    //TODO: check if symbol already exists
+                    //TODO: check if array size <= 0
+                    $$.vars = $3.vars;
+                    Var v = Var();
+                    v.type = $3.type;
+                    v.length = $3.length;
+                    v.place = new string();
+                    *v.place = $2;
+                    $$.vars->push_back(v);
+                    if($3.type == INT_ARR){
+                        *($$.code) << ".[] " << $2 << ", " << $3.length << "\n";
+                        string s = $2;
+                        if(!check_map(s)){
+                            push_map(s,v);
+                        }
+                        else{
+                            string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
+                            yyerror(tmp.c_str());
+                        }
+                    }
+                    else if($3.type == INT){
+                        *($$.code) << ". " << $2 << "\n";
+                        string s = $2;
+                        if(!check_map(s)){
+                            push_map(s,v);
+                        }
+                        else{
+                            string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
+                            yyerror(tmp.c_str());
+                        }
+                    }else{
+                        //printf("================ ERRRR\n");
+                    }
+                }
+                | COLON declaration_3 INTEGER {
+                    //printf("declaration_2 -> COLON declaration_3 INTEGER\n");
+                    $$.code = $2.code;
+                    $$.type = $2.type;
+                    $$.length = $2.length;
+                    $$.vars = $2.vars;
+                }
+                ;
+
+declaration_3:  ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF{
+                    //printf("declaration_3 -> ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF\n");
+                    $$.code = new stringstream();
+                    $$.vars = new vector<Var>();
+                    $$.type = INT_ARR;
+                    $$.length = $3;
                 }
                 | {
-                  $$.code = "";
-                }
-                ;
-function:       FUNCTION addFunc SEMICOLON BEGIN_PARAMS funcInnerParams END_PARAMS BEGIN_LOCALS funcInnerLocals END_LOCALS BEGIN_BODY funcInnerTwo END_BODY 
-                {
-                  ostringstream oss;
-                  string temp = $2.result_id;
-                  
-                  oss << "func " << $2.result_id << endl;
-                  oss << $5.code << $8.code;
-
-                  string findContinue($11.code);
-
-                  // Check for any leftover continues (test 09)
-                  if (findContinue.find("continue") != std::string::npos) {
-                    string temp = $2.result_id;
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": continue outside loop in function " + temp+ "\n";
-                    errors += errormessage;
+                    //printf("declaration_3 -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.vars = new vector<Var>();
+                    $$.type = INT;
+                    $$.length = 0;
                   }
-                  oss << $11.code;
-
-                  $$.code = strdup(oss.str().c_str());
-                }
                 ;
-addFunc:      ident {
-                // Add func name to function set
-                functionSet.insert($1.result_id);
-                  
-                $$.result_id = $1.result_id;
-              }
 
-ident:          IDENT
-                {
-				          $$.code = "";
-                  $$.result_id = $1;
+statement:      statement_1 {
+                    $$.code = $1.code;
                 }
-                ;
-funcInnerParams:    declaration SEMICOLON funcInnerParams
-                    {
-                      ostringstream oss;
-                      oss << $1.code;
-                      oss << "= " << $1.result_id << ", $" << paramCount << endl;
-                      $$.code = strdup(oss.str().c_str());
-                      paramCount++;
+                | statement_2 {
+                    $$.code = $1.code;
+                }
+                | statement_3 {
+                    $$.code = $1.code;
+                }
+                | statement_4 {
+                    $$.code = $1.code;
+                }
+                | statement_5 {
+                    $$.code = $1.code;
+                    //print_test($$.code->str());
+                }
+                | statement_6 {
+                    $$.code = $1.code;
+                }
+                | CONTINUE{
+                    //printf("statement -> CONTINUE\n");
+                    $$.code = new stringstream();
+                    if(loop_stack.size() <= 0){
+                        yyerror("ERROR: continue statement not within a loop");
                     }
-                    |
-                    {
-                      $$.code = "";
-                      $$.result_id = "";
+                    else{
+                        Loop l = loop_stack.top();
+                        *($$.code) << ":= " << *l.parent << "\n";
+                        //loop_stack.pop();
                     }
-                    ;
-funcInnerLocals:    declaration SEMICOLON funcInnerLocals 
-                    {
-                      ostringstream oss;
-                      oss << $1.code;
-                      oss << $3.code;
-                      $$.code = strdup(oss.str().c_str());
-                      
+                    //TODO: probably add code to jump to start of loop?
+                    //TODO: check if used inside loop
+                }
+                | RETURN expression{
+                    //printf("statement -> RETURN expression\n");
+                    $$.code = $2.code;
+                    $$.place = $2.place;
+                    *($$.code) << "ret " << *$$.place << "\n";
+                }
+
+statement_1:    var ASSIGN expression{
+                    //printf("statement -> var ASSIGN expression\n");
+                    //TODO: check if var was declared?
+                    $$.code = $1.code;
+                    *($$.code) << $3.code->str();
+                    if($1.type == INT && $3.type == INT){
+                       *($$.code) << "= " << *$1.place << ", " << *$3.place << "\n";
                     }
-                    | 
-                    {
-                      $$.code = "";
-                      $$.result_id = "";
+                    else if($1.type == INT && $3.type == INT_ARR){
+                        *($$.code) << gen_code($1.place, "=[]", $3.place, $3.index);
                     }
-                    ;
-funcInnerTwo:   statement SEMICOLON funcInnerTwo 
-                {
-				  ostringstream oss;
-				  oss << $1.code << $3.code;
-                  $$.code = strdup(oss.str().c_str());
-                }
-                | 
-                {
-				  ostringstream oss;
-				  oss << "endfunc" << endl << endl;
-				  $$.code = strdup(oss.str().c_str());
-                }
-                ;
-declaration:    decInner COLON INTEGER
-                {
-                  if (strchr($1.result_id, '#') == NULL){
-                    ostringstream oss;
-                    oss << ". " << $1.result_id << endl;
-                    $$.code = strdup(oss.str().c_str());
-                    $$.result_id = $1.result_id;
-                  }
-                  else {
-                    char curr = $1.result_id[0];
-                    int count = 0;
-                    ostringstream oss;
-                    while (count < strlen($1.result_id)){
-                    ostringstream lss;
-                    curr = $1.result_id[count];
-
-                    while ((curr != '#') && count < strlen($1.result_id)){
-                      lss << curr;
-                      count += 1;
-                      curr = $1.result_id[count];
+                    else if($1.type == INT_ARR && $3.type == INT && $1.value != NULL){
+                        *($$.code) << gen_code($1.value, "[]=", $1.index, $3.place);
                     }
-                    oss << ". " << lss.str().c_str() << endl;
-                    count += 1;
-                  }
-
-                  // Check for declaration of a reserved word (test 05)
-                  // string errormessage = "";
-                  // string temp = $1.result_id;
-                  // for (unsigned int i = 0; i < reservedWords.size(); ++i) {
-                  //   if (reservedWords.at(i) == temp) {
-                  //     string errormessage;
-                  //     errormessage = "ERROR on line " + to_string(currLine) + ": invalid declaration of reserved word " + temp + "\n";
-                  //     errors += errormessage;
-
-                  //     isReserved = true;
-                  //   }
-                  // } 
-
-                  // if (variableSet.count(temp) != 0) {
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " +  to_string(currLine) + ": redeclaration of variable " + temp + "\n";
-                  //   errors += errormessage;
-                  // }
-                  // else if (isReserved){
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " + to_string(currLine) + ": invalid declaration of reserved word " + temp + "\n";
-                  //   errors += errormessage;
-                  // }
-                  // else {
-                  //   variableSet.insert(temp);
-                  // }
-
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = $1.result_id;
-                  }
-                }
-                | decInner COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER 
-                {
-                  
-                  // Check if declaring arrays of size <= 0 (test 08)
-                   if ($5 <= 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": array size can't be less than 1\n";
-                    errors += errormessage;
-                  }
-
-                  ostringstream oss;
-                  oss << ".[] " << $1.result_id << ", " << $5 << endl;
-
-                  // string temp = $1.result_id;
-                  // if (variableSet.count(temp) != 0) {
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " +  to_string(currLine) + ": redeclaration of variable " + temp + "\n";
-                  //   errors += errormessage;
-                  // }
-                  // else if (isReserved){
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " + to_string(currLine) + ": invalid declaration of reserved word " + temp + "\n";
-                  //   errors += errormessage;
-                  // }
-                  // else {
-                  //   variableSet.insert(temp);
-                  // }
-
-                  $$.arr_size = strdup(to_string($5).c_str());
-                  $$.code = strdup(oss.str().c_str());
+                    else if($1.type == INT_ARR && $3.type == INT_ARR){
+                        string *tmp = new_temp();
+                        *($$.code) << dec_temp(tmp) << gen_code(tmp, "=[]", $3.place, $3.index);
+                        *($$.code) << gen_code($1.value, "[]=", $1.index, tmp);
+                    }
+                    else{
+                        yyerror("Error: expression is null.");
+                    }
+                    //print_test($$.code->str());
                 }
                 ;
-decInner:       ident 
-                {
-                  string temp = $1.result_id;
-                  for (unsigned int i = 0; i < reservedWords.size(); ++i) {
-                    if (reservedWords.at(i) == temp) {
-                      string errormessage;
-                      errormessage = "ERROR on line " + to_string(currLine) + ": declared reserved word " + temp + "\n";
-                      errors += errormessage;
+
+statement_2:    IF bool_exp THEN stmt_loop statement_21 ENDIF{
+                    //cout << "statement -> IF bool_exp THEN stmt_loop statement_21 ENDIF\n" << endl;
+                    $$.code = new stringstream();
+                    $$.begin = new_label();
+                    $$.end = new_label();
+                    *($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.place << "\n";
+                    if($5.begin != NULL){                       
+                        *($$.code) << go_to($5.begin); 
+                        *($$.code) << dec_label($$.begin)  << $4.code->str() << go_to($$.end);
+                        *($$.code) << dec_label($5.begin) << $5.code->str();
+                    }
+                    else{
+                        *($$.code) << go_to($$.end)<< dec_label($$.begin)  << $4.code->str();
+                    }
+                    *($$.code) << dec_label($$.end);
+                }
+                ;
+
+statement_21:   {
+                    //printf("statement_21 -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.begin = NULL;
+                }
+                | ELSE stmt_loop{
+                    //printf("statement_21 -> ELSE stmt_loop\n");
+                    $$.code = $2.code;
+                    $$.begin = new_label();
+                }
+                ;
+
+statement_3:    WHILE bool_exp b_loop BEGINLOOP stmt_loop ENDLOOP{
+                    //cout << "statement -> WHILE bool_exp BEGINLOOP stmt_loop ENDLOOP\n" << endl;
+                    $$.code = new stringstream();
+                    $$.begin = $3.begin;
+                    $$.parent = $3.parent;
+                    $$.end = $3.end;
+                    //$$.begin = new_label();
+                    //$$.parent = new_label();
+                    //$$.end = new_label();
+                    //Loop l = Loop();
+                    //l.parent = $$.parent;
+                    //l.begin = $$.begin;
+                    //l.end = $$.end;
+                    ////cout << "\n\nBEFORE:" << loop_stack.size();
+                    //loop_stack.push(l);
+                    *($$.code) << dec_label($$.parent) << $2.code->str() << "?:= " << *$$.begin << ", " << *$2.place << "\n" 
+                    << go_to($$.end) << dec_label($$.begin) << $5.code->str() << go_to($$.parent) << dec_label($$.end);
+                    loop_stack.pop();
+
+                }
+                ;
+
+b_loop:         {
+                    //cout << "bLOOP" << endl;
+                    $$.code = new stringstream();
+                    $$.begin = new_label();
+                    $$.parent = new_label();
+                    $$.end = new_label();
+                    //cout << "add loop" << endl;
+                    Loop l = Loop();
+                    l.parent = $$.parent;
+                    l.begin = $$.begin;
+                    l.end = $$.end;
+                    //cout << "\n\nBEFORE:" << loop_stack.size();
+                    //cout << "push loop: " << loop_stack.size() << endl;
+                    loop_stack.push(l);
+                    //cout << "end bloop" << endl;
+                };
+
+statement_4:    DO b_loop BEGINLOOP stmt_loop ENDLOOP WHILE bool_exp{
+                    //cout << "statement -> DO BEGINLOOP stmt_loop ENDLOOP WHILE bool_exp\n" << endl;
+                    $$.code = new stringstream();
+                    $$.begin = $2.begin;
+                    $$.parent = $2.parent;
+                    $$.end = $2.end;
+                    *($$.code) << dec_label($$.begin) << $4.code->str() << dec_label($$.parent) << $7.code->str() << "?:= " << *$$.begin << ", " << *$7.place << "\n" << dec_label($$.end);
+                    loop_stack.pop();
+                }
+                ;
+
+statement_5:    READ var statement_51{
+                    //printf("statement -> READ var statement_51\n");
+                    $$.code = $2.code;
+                    if($2.type == INT){
+                       *($$.code) << ".< " << *$2.place << "\n"; 
+                    }
+                    else{
+                       *($$.code) << ".[]< " << *$2.place << ", " << $2.index << "\n"; 
+                    }
+                    *($$.code) << $3.code->str();
+                    //print_test($$.code->str());
+                }
+                ;
+
+statement_51:   COMMA var statement_51 {
+                    //printf("statement_51 -> COMMA var statement_51\n");
+                    $$.code = $2.code;
+                    if($2.type == INT){
+                       *($$.code) << ".< " << *$2.place << "\n"; 
+                    }
+                    else{
+                       *($$.code) << ".[]< " << *$2.place << ", " << $2.index << "\n"; 
+                    }
+                    *($$.code) << $3.code->str();
+                    //print_test($$.code->str());
+                }
+                | {
+                    //printf("statement_51 -> EPSILON\n");
+                    $$.code = new stringstream();
+                  }
+                ;
+
+statement_6:    WRITE var statement_61{
+                    //printf("statement -> WRITE var statement_61\n");
+                    $$.code = $2.code;
+                    if($2.type == INT){
+                       *($$.code) << ".> " << *$2.place << "\n"; 
+                    }
+                    else{
+                       *($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n"; 
+                    }
+                    *($$.code) << $3.code->str();
+                  }
+                ;
+
+statement_61:   COMMA var statement_61{
+                    //printf("statement_61 -> COMMA var statement_61\n");
+                    $$.code = $2.code;
+                    if($2.type == INT){
+                       *($$.code) << ".> " << *$2.place << "\n"; 
+                    }
+                    else{
+                       *($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n"; 
+                    }
+                    *($$.code) << $3.code->str();
+                  }
+                |{
+                    //printf("statement_61 -> EPSILON\n");
+                    $$.code = new stringstream();
+                 }
+                ;
+
+bool_exp:       rel_and_exp bool_exp2{
+                    //cout << "bool_exp -> rel_and_exp bool_exp2\n" << endl;
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    if($2.op != NULL && $2.place != NULL)
+                    {                        
+                        $$.place = new_temp();
+                        //cout << "\n\nOP:" << *$2.op << "\nPLACE:" << *$1.place << "\n$2PLACE:" << *$2.place << endl;
+                       *($$.code) << dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $2.place);
+                        //cout << "\n\nOP:" << $2.op << "\nPLACE:" << $1.place << "\n$2PLACE:" << $2.place << endl;
+                    }
+                    else{
+                        //cout << "ELSE" << endl;
+                        $$.place = $1.place;
+                        $$.op = $1.op;
+                    }
+                    //print_test($$.code->str());
+                    //cout << "END OF BOOL" << endl;
+                }
+                ;
+
+bool_exp2:      OR rel_and_exp bool_exp2{
+                    //cout <<"bool_exp2 -> OR rel_and_exp bool_exp2\n" << endl;
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "||";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "||";
+
+                    //    *($$.code) << dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    expression_code($$,$2,$3,"||");
+
+
+                }
+                |{
+                    //cout << "bool_exp2 -> EPSILON\n" << endl;
+                    $$.code = new stringstream();
+                    $$.op = NULL;
+                 }
+                ; 
+
+rel_and_exp:    relation_exp rel_and_exp2{
+                    //printf("rel_and_exp -> relation_exp rel_and_exp2\n");
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    if($2.op != NULL && $2.place != NULL)
+                    {                        
+                        $$.place = new_temp();
+                       *($$.code) << dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $2.place);
+                    }
+                    else{
+                        $$.place = $1.place;
+                        $$.op = $1.op;
+                    }
+                }
+                ;
+
+rel_and_exp2:   AND relation_exp rel_and_exp2{
+                    //printf("rel_and_exp2 -> AND relation_exp rel_and_exp2\n");
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "&&";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "&&";
+
+                    //    *($$.code) << dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    expression_code($$,$2,$3,"&&");
+
+                }
+                |{
+                    //printf("rel_and_exp2 -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.op = NULL;
+                 }
+                ;
+
+relation_exp:   relation_exp_s{
+                    //printf("relation_exp -> relation_exp_s\n");
+                    $$.code = $1.code;
+                    $$.place = $1.place; 
+                }
+                | NOT relation_exp_s{
+                    //printf("relation_exp -> NOT relation_exp_s\n");
+                    $$.code = $2.code;
+                    $$.place = new_temp();
+                    *($$.code) << dec_temp($$.place) << gen_code($$.place, "!", $2.place, NULL);
+                }
+                ;
+
+relation_exp_s: expression comp expression{
+                    //printf("relation_exp_s -> expression comp expression\n");
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    *($$.code) << $3.code->str();
+                    $$.place = new_temp();
+                    *($$.code)<< dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $3.place);
+                }
+                | TRUE{                    
+                    //printf("relation_exp_s -> TRUE\n");
+                    $$.code = new stringstream();
+                    $$.place = new string();
+                    *$$.place = "1";
+                    }
+                | FALSE{
+                    //printf("relation_exp_s -> FALSE\n");
+                    $$.code = new stringstream();
+                    $$.place = new string();
+                    *$$.place = "0";
+                  }
+                | L_PAREN bool_exp R_PAREN{
+                    //cout << "relation_exp_s -> L_PAREN bool_exp R_PAREN\n" << endl;
+                    $$.code = $2.code;
+                    $$.place = $2.place;
+                }
+                ;
+
+comp:           EQ{
+                    //printf("comp -> EQ\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = "==";
+                  }
+                | NEQ{
+                    //printf("comp -> NEQ\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = "!=";
+                  }
+                | LT{
+                    //printf("comp -> LT\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = "<";
+                  }
+                | GT{
+                    //printf("comp -> GT\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = ">";
+                  }
+                | LTE{
+                    //printf("comp -> LTE\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = "<=";
+                  }
+                | GTE{
+                    //printf("comp -> GTE\n");
+                    $$.code = new stringstream();
+                    $$.op = new string();
+                    *$$.op = ">=";
+                  }
+                ;
+
+expression:     mult_expr expression_2{
+                    //printf("expression -> mult_expr expression_2\n");
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    if($2.op != NULL && $2.place != NULL)
+                    {                        
+                        $$.place = new_temp();
+                       *($$.code)<< dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $2.place);
+                    }
+                    else{
+                        $$.place = $1.place;
+                        $$.op = $1.op;
+                    }
+                    $$.type = INT;
+                  }
+                ;
+
+expression_2:   ADD mult_expr expression_2 {
+                    //printf("expression_2 -> ADD mult_expr expression_2\n");
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "+";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "+";
+
+                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    expression_code($$,$2,$3,"+");
+
+                    //print_test("ADD\n" +$$.code->str() +"\n");
+                    //print_test($$.code->str());
+
+                  }
+                | SUB mult_expr expression_2{
+                    //printf("expression_2 -> SUB mult_expr expression_2\n");
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "-";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "-";
+
+                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //}
+                    expression_code($$,$2,$3,"-");
+                    //print_test("SUB\n" +$$.code->str());
+                  }
+                | {
+                    //printf("expression -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.op = NULL;
+                  }
+                ;
+
+mult_expr:      term mult_expr_2{
+                    //printf("mult_expr -> term mult_expr_2\n");
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    if($2.op != NULL && $2.place != NULL)
+                    {                        
+                        $$.place = new_temp();
+                       *($$.code)<< dec_temp($$.place)<< gen_code($$.place, *$2.op, $1.place, $2.place);
+                    }
+                    else{
+                        $$.place = $1.place;
+                        $$.op = $1.op;
                     }
                   }
-                  
-                  if (variableSet.count(temp) != 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " +  to_string(currLine) + ": redeclaration of variable " + temp + "\n";
-                    errors += errormessage;
+                ;
+
+
+mult_expr_2:    MULT term mult_expr_2{
+                    //printf("mult_expr_2 -> MULT mult_expr\n");
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "*";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "*";
+
+                    //    *($$.code) << dec_temp($$.place)<< gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    expression_code($$,$2,$3,"*");
+
                   }
-                  else if (isReserved){
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": invalid declaration of reserved word " + temp + "\n";
-                    errors += errormessage;
+                | DIV term mult_expr_2{
+                    //printf("mult_expr_2 -> DIV mult_expr\n");
+                    // $$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "/";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "/";
+
+                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    expression_code($$,$2,$3,"/");
+                    //print_test($$.code->str());
                   }
-                  else {
-                    variableSet.insert(temp);
+                | MOD term mult_expr_2{
+                    //printf("mult_expr_2 -> MOD mult_expr\n");
+                    expression_code($$,$2,$3,"%");
+                    // $$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "%";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "%";
+                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
                   }
+                |{
+                    //printf("mult_expr_2 -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.op = NULL;
+                 }
+                ;
+
+term:           SUB term_2{
+                    //printf("term -> SUB term_2\n");
+                    $$.code = $2.code;
+                    $$.place = new_temp();
+                    string tmp = "-1";
+                    *($$.code)<< dec_temp($$.place) << gen_code($$.place, "*",$2.place, &tmp );
+                  }
+                | term_2{
+                    //printf("term -> term_2\n");
+                    $$.code = $1.code;
+                    $$.place = $1.place;
+                  }
+                | term_3{
+                    //printf("term -> term_3\n");
+                    $$.code = $1.code;
+                    $$.place = $1.place;
+                  }
+                ;
+
+term_2:         var{
+                    //printf("term_2 -> var\n");
+                    //TODO: check if var was declared?
+                    $$.code = $1.code;
+                    $$.place= $1.place;
+                    $$.index = $1.index;
+                  }
+                | NUMBER{
+                    //printf("term_2 -> NUMBER\n");
+                    $$.code = new stringstream();
+                    $$.place = new string();
+                    *$$.place = to_string($1);
+                  }
+                | L_PAREN expression R_PAREN{
+                    //printf("term_2 -> L_PAREN expression R_PAREN\n");
+                    $$.code = $2.code;
+                    $$.place = $2.place;
+                  }
+                ;
+
+term_3:         IDENT L_PAREN term_31 R_PAREN{
+                    //printf("term_3 -> IDENT L_PAREN term_31 R_PAREN\n");
+                    //TODO: check if var was declared?
+                    $$.code = $3.code;
+                    $$.place = new_temp();
+                    *($$.code) << dec_temp($$.place)<< "call " << $1 << ", " << *$$.place << "\n";
+                    string tmp = $1;
+                    check_map_dec(tmp);
                 }
-                | ident COMMA decInner 
-                {
-                  // Check for declaration of a reserved word (test 05)
-                  string temp = $1.result_id;
-                  for (unsigned int i = 0; i < reservedWords.size(); ++i) {
-                    if (reservedWords.at(i) == temp) {
-                      string errormessage;
-                      errormessage = "ERROR on line " + to_string(currLine) + ": declared reserved word " + temp + "\n";
-                      errors += errormessage;
+                ;
+
+term_31:        expression term_32{
+                    //printf("term_31-> expression term_32\n");
+                    //TODO: check if function declared?
+                    $$.code = $1.code;
+                    *($$.code) << $2.code->str();
+                    *($$.code) << "param " << *$1.place << "\n";
+                } 
+                | {
+                    //printf("term_31 -> EPSILON\n");
+                    $$.code = new stringstream(); 
+                  }
+                ;
+term_32:        COMMA term_31{
+                    //printf("term_32 -> COMMA term_31\n");
+                    $$.code = $2.code;
+                } 
+                | {
+                    //printf("term_32 -> EPSILON\n");
+                    $$.code = new stringstream();
+                  }
+
+var:            IDENT var_2{
+                    //printf("var -> IDENT var_2\n");
+                    $$.code = $2.code;
+                    $$.type = $2.type;
+                    //TODO: check if var was declared?
+                    string tmp = $1;
+                    check_map_dec(tmp);
+                    if(check_map(tmp) && var_map[tmp].type != $2.type){
+                        if($2.type == INT_ARR){
+                            string output ="Error: used variable \"" + tmp + "\" is not an array.";
+                            yyerror(output.c_str());
+                        }
+                        else if($2.type == INT){
+                            string output ="Error: used array variable \"" + tmp + "\" is missing a specified index.";
+                            yyerror(output.c_str());
+                        }
                     }
-                  } 
 
-                  // string temp = $1.result_id; 
-                  if (variableSet.count(temp) != 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " +  to_string(currLine) + ": redeclaration of variable " + temp + "\n";
-                    errors += errormessage;
-                  }
-                  else if (isReserved){
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": invalid declaration of reserved word " + temp + "\n";
-                    errors += errormessage;
-                  }
-                  else {
-                    variableSet.insert(temp);
-                  }
-
-                  
-                  ostringstream oss; 
-                  oss << $1.result_id << "#" << $3.result_id;
-                  $$.result_id = strdup(oss.str().c_str());
-                }
-                ;
-statement:      var ASSIGN expression
-                {
-				  if ($1.is_array){
-				    ostringstream oss;
-				    oss << $1.code;
-				    oss << $3.code;
-				    oss << "[]= " << $1.arr_name << ", " <<  $1.result_id << ", " 	<< $3.result_id << endl;
-				    $$.code = strdup(oss.str().c_str());
-				  }
-				  else {
-				    ostringstream oss;
-                    oss << $3.code;
-				    oss << "= " << $1.result_id << ", " << $3.result_id << endl;
-				    $$.code = strdup(oss.str().c_str());
-				  }
-                }
-                | IF bool_expr THEN stateInnerOne ENDIF
-                {
-                  string l = new_label();
-                  string m = new_label();
-                  ostringstream oss;
-
-                  oss << $2.code;
-                  oss << "?:= " << l << ", " << $2.result_id << endl;
-                  oss << ":= " << m << endl;
-                  oss << ": " << l << endl;
-                  oss << $4.code;
-                  oss << ": " << m << endl;
-
-                  $$.code = strdup(oss.str().c_str());
-                }
-                | IF bool_expr THEN stateInnerOne ELSE stateInnerOne ENDIF 
-				{
-				  string l = new_label();
-				  string m = new_label();
-				  ostringstream oss;
-				  
-				  oss << $2.code;
-				  oss << "?:= " << l << ", " << $2.result_id << endl;
-				  oss << ":= " << m << endl;
-				  oss << ": " << l << endl;
-				  oss << $4.code;
-				  oss << ": " << m << endl;
-				  oss << $6.code;	
-				  
-				  $$.code = strdup(oss.str().c_str());
-				}
-                | WHILE bool_expr BEGINLOOP stateInnerOne ENDLOOP
-				{
-				  string l = new_label();
-				  string m = new_label();
-				  string n = new_label();
-				  ostringstream oss;
-				  
-				  if ($4.label == NULL){
-					  oss << ": " << n << endl;
-					  oss << $2.code;
-					  oss << "?:= " << l << ", " << $2.result_id << endl;
-					  oss << ":= " << m << endl;
-					  oss << ": " << l << endl;
-				
-					  oss << $4.code;
-					  oss << ":= " << n << endl;
-					  oss << ": " << m << endl;
-				  }
-				  else {
-					  oss << ": " << n << endl;
-					  oss << $2.code;
-					  oss << "?:= " << l << ", " << $2.result_id << endl;
-					  oss << ":= " << m << endl;
-					  oss << ": " << l << endl;
-				
-					  oss << $4.code;
-					  oss << ": " << $4.label << endl;	
-					  oss << ":= " << n << endl;
-					  oss << ": " << m << endl;
-					  
-				  }
-				  
-
-				  $$.code = strdup(oss.str().c_str());
-				  
-				}
-                | DO BEGINLOOP stateInnerOne ENDLOOP WHILE bool_expr 
-                {
-				  string l = new_label();
-				  string m = new_label();
-				  string n = new_label();
-				  ostringstream oss;
-				  				  
-				  if (strlen($3.label) <= 0){
-					  oss << ": " << l << endl;
-					  oss << $3.code << $6.code;
-					  oss << "?:= " << l << ", " << $6.result_id << endl;  
-				  }
-				  else {
-					  oss << ": " << l << endl;
-					  oss << $3.code;
-					  oss << ": " << $3.label << endl;
-					  oss << $6.code;
-					  oss << "?:= " << l << ", " << $6.result_id << endl;
-				  }
-
-				  $$.code = strdup(oss.str().c_str());
-				  
-				}
-                | FOR var ASSIGN NUMBER SEMICOLON bool_expr SEMICOLON var ASSIGN expression BEGINLOOP stateInnerOne ENDLOOP 
-                {}
-                | READ stateInnerTwo 
-                {
-				  ostringstream oss;
-				  oss << $2.code;
-				  if (strchr($2.result_id, '#') == NULL){
-					  if ($2.is_array){
-						  oss << ".[]< " << $2.arr_name << ", " << $2.result_id << endl;
-						  $$.code = strdup(oss.str().c_str());
-						  $$.result_id = $2.result_id;
-					  }
-					  else {
-						  oss << ".< " << $2.result_id << endl;
-						  $$.code = strdup(oss.str().c_str());
-						  $$.result_id = $2.result_id;
-					  }			  
-				  }
-				  else {
-					  int count = 0;
-					  char curr = $2.result_id[0];
-					  
-					  while (count < strlen($2.result_id)){
-					    curr = $2.result_id[count];
-					    ostringstream lss;
-
-					    while ((curr != '#') && count < strlen($2.result_id)){
-						  lss << curr;
-						  count += 1;
-						  curr = $2.result_id[count];
-						}
-						oss << ".< " << lss.str().c_str() << endl;
-						count += 1;
-					  }
-				  }  
-				  $$.code = strdup(oss.str().c_str());				
-                }
-                | WRITE stateInnerTwo 
-                {
-				  
-				  ostringstream oss;
-				  oss << $2.code;
-				  
-				  if (strchr($2.result_id, '#') == NULL){
-					  if ($2.is_array){
-						  oss << ".[]> " << $2.arr_name << ", " << $2.result_id << endl;
-						  $$.code = strdup(oss.str().c_str());
-						  $$.result_id = $2.result_id;
-					  }
-					  else {
-						  oss << ".> " << $2.result_id << endl;
-						  $$.code = strdup(oss.str().c_str());
-						  $$.result_id = $2.result_id;
-					  }
-				  }
-				  else {
-					  int count = 0;
-					  char curr = $2.result_id[0];
-					  
-					  while (count < strlen($2.result_id)){
-					    curr = $2.result_id[count];
-					    ostringstream lss;
-					    
-					    while ((curr != '#') && count < strlen($2.result_id)){
-						  lss << curr;
-						  count += 1;
-						  curr = $2.result_id[count];
-						}
-						oss << ".> " << lss.str().c_str() << endl;
-						count += 1;
-					  }
-				  }  
-				  $$.code = strdup(oss.str().c_str());	
-				}
-                | CONTINUE 
-                {
-                  ostringstream oss;
-                  string l = new_label();
-                  oss << ":= " << l << endl;
-                  $$.label = strdup(l.c_str());
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(l.c_str());
-                }
-                | RETURN expression 
-                {
-                  ostringstream oss;
-                  oss << $2.code;
-                  oss << "ret " << $2.result_id << endl;
-                  $$.code = strdup(oss.str().c_str());
-                }
-                ;
-stateInnerOne:  statement SEMICOLON stateInnerOne 
-				{
-				  ostringstream oss;
-				  oss << $1.code << $3.code;
-				  $$.code = strdup(oss.str().c_str());
-				  
-				  ostringstream ossStatementLabel;
-				  ostringstream ossStateInnerOneLabel;
-				  
-				  ossStatementLabel << $1.label;
-				  ossStateInnerOneLabel << $3.label;
-				  
-				  /*if (strstr($1.code, "label") != NULL){
-					  $$.label = $1.label;
-					  cout << "here" << $$.label << endl;
-				  }*/
-				  
-				  if (ossStatementLabel.str().length() > 0) {
-					  $$.label = strdup(ossStatementLabel.str().c_str());
-			      } else {
-					  $$.label = strdup(ossStateInnerOneLabel.str().c_str());
-			      }
-				}
-                | statement SEMICOLON 
-				{ 
-				  $$.code = $1.code;
-				  $$.result_id = $1.result_id;
-				  
-				  ostringstream oss;
-				  oss << $1.label;
-				  string label = oss.str();
-				  				  
-				  if (label.length() > 0) {
-					  $$.label = $1.label;
-				  } else {
-					  $$.label = "";
-				  }
-				 }
-                ;
-stateInnerTwo:  var 
-				{
-				  if ($1.is_array){
-					  $$.code = $1.code;
-					  $$.result_id = $1.result_id;
-					  $$.is_array = TRUE;
-					  $$.arr_name = $1.arr_name;
-				  }
-				  else {
-					  $$.code = $1.code;
-					  $$.result_id = $1.result_id;
-				  }
-				}
-                | var COMMA stateInnerTwo 
-			    {
-				  ostringstream oss;
-				  oss << $1.result_id << "#" << $3.result_id;
-				  $$.result_id = strdup(oss.str().c_str());
-			    }
-                ;
-bool_expr:      relation_and_expr
-                {
-                  $$.code = $1.code;
-                  $$.result_id = $1.result_id;
-                }
-                | relation_and_expr OR bool_expr 
-                {
-                  ostringstream oss; 
-                  string x = new_temp();
-                  oss << $1.code << $3.code;
-                  oss << ". " << x << endl;
-                  oss << "|| " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                  
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());
-                }
-                ;
-relation_and_expr:  relation_expr 
-                    {
-                      $$.code = $1.code;
-                      $$.result_id = $1.result_id;
+                    if($2.index == NULL){
+                        $$.place = new string();
+                        *$$.place = $1;
                     }
-                    | relation_expr AND relation_and_expr  
-                    {
-                      ostringstream oss;
-                      string x = new_temp();
-                      oss << $1.code << $3.code;
-                      oss << ". " << x << endl;
-                      oss << "&& " << x << 	", " << $1.result_id << ", " << $3.result_id << endl;
-                      
-                      $$.code = strdup(oss.str().c_str());
-                      $$.result_id = strdup(x.c_str());
+                    else{
+                        $$.index = $2.index;
+                        $$.place = new_temp();
+                        string* tmp = new string();
+                        *tmp = $1;
+                        *($$.code) << dec_temp($$.place) << gen_code($$.place, "=[]", tmp,$2.index);
+                        $$.value = new string();
+                        *$$.value = $1;
                     }
-                    ;
-relation_expr:  expression comp expression
-                {
-                  ostringstream oss;
-                  string x = new_temp();
-				  oss << $1.code << $3.code;
-                  oss << ". " << x << endl;
-                  oss << $2.optr << " " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());
-                }
-                | TRUE 
-                {
-				  ostringstream oss;
-				  oss << "1";
-				  $$.code = "";
-				  $$.result_id = strdup(oss.str().c_str());
-				}
-                | FALSE 
-                {
-				  ostringstream oss;
-				  oss << "0";
-				  $$.code = "";
-				  $$.result_id = strdup(oss.str().c_str());				
-				}
-                | 
-                L_PAREN bool_expr R_PAREN 
-                {
-				  $$.code = $2.code;
-				  $$.result_id = $2.result_id;
-				}
-                | NOT expression comp expression 
-                {
-				  ostringstream oss;
-                  string x = new_temp();
-				  oss << $2.code << $4.code;
-                  oss << "!. " << x << endl;
-                  oss << $3.optr << " " << x << ", " << $2.result_id << ", " << $4	.result_id << endl;
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());
-				}
-                | NOT TRUE 
-                {
-				  ostringstream oss;
-				  oss << "!1";
-				  $$.code = "";
-				  $$.result_id = strdup(oss.str().c_str());
-				}
-                | NOT FALSE 
-                {
-				  ostringstream oss;
-				  oss << "!0";
-				  $$.code = "";
-				  $$.result_id = strdup(oss.str().c_str());	
-				}
-                | NOT L_PAREN bool_expr R_PAREN 
-                {
-				  ostringstream oss;
-				  oss << "! " << $3.result_id;
-				  $$.code = $3.code;
-				  $$.result_id = strdup(oss.str().c_str());
-				}
-                ;
-comp:           EQ
-                {
-                  $$.optr = "==";
-                }
-                | NEQ
-                {
-                  $$.optr = "!=";
-                }
-                | LT
-                {
-                  $$.optr = "<";
-                }
-                | GT
-                {
-                  $$.optr = ">";
-                }
-                | LTE
-                {
-                  $$.optr = "<=";
-                }
-                | GTE
-                {
-                  $$.optr = ">=";
                 }
                 ;
-expression:     multiplicative_expr
-                {                  
-                  $$.result_id = $1.result_id;
-                  $$.code = $1.code;
+
+var_2:          L_SQUARE_BRACKET expression R_SQUARE_BRACKET{
+                    //TODO: check if var was declared?
+                    //printf("var_2 -> L_SQUARE_BRACKET expression R_SQUARE_BRACKET\n");
+                    $$.code = $2.code;
+                    $$.place = NULL;
+                    $$.index = $2.place;
+                    $$.type = INT_ARR;
                 }
-                | multiplicative_expr ADD expression
-                {
-                  ostringstream oss;
-                  oss << $1.code << $3.code;
-                  string x = new_temp();
-                  oss << ". " << x << endl;
-                  oss << "+ " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());
-                }
-                | multiplicative_expr SUB expression
-                {
-                  ostringstream oss;
-                  oss << $1.code << $3.code;
-                  string x = new_temp();
-                  oss << ". " << x << endl;
-                  oss << "- " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());
-                }
+                |{
+                    //printf("var_2 -> EPSILON\n");
+                    $$.code = new stringstream();
+                    $$.index = NULL;
+                    $$.place = NULL;
+                    $$.type = INT;
+                 }
                 ;
-multiplicative_expr:  term
-                      {	
-						if (strlen($1.code) > 0){
-						  if ($1.is_array){
-							ostringstream oss;
-							string x = new_temp();
-							
-							oss << $1.code;
-							oss << ". " << x << endl;
-							oss << "=[] " << x << ", " << $1.arr_name << ", " << $1.result_id << endl;
-							$$.code = strdup(oss.str().c_str());
-						    $$.result_id = strdup(x.c_str());
-						  }
-						  else {
-							$$.code = $1.code;
-						    $$.result_id = $1.result_id;
-						  }
-		
-						}	 
-						else {
-						  ostringstream oss;
-						  string x = new_temp();
-						  oss << ". " << x << endl;
-						  oss << "= " << x << ", " << $1.result_id << endl;
-						  $$.code = strdup(oss.str().c_str());
-						  $$.result_id = strdup(x.c_str());
-						}
-                      }
-                      | term MULT multiplicative_expr
-                      {
-                        ostringstream oss;
-                        oss << $1.code << $3.code;
-                        string x = new_temp();
-                        oss << ". " << x << endl;
-                        oss << "* " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                        $$.code = strdup(oss.str().c_str());
-                        $$.result_id = strdup(x.c_str());
-                      }
-                      | term DIV multiplicative_expr 
-                      {
-                        ostringstream oss;
-                        string x = new_temp();
-                        oss << $1.code << $3.code;
-                        oss << ". " << x << endl;
-                        oss << "/ " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                        $$.code = strdup(oss.str().c_str());
-                        $$.result_id = strdup(x.c_str()); 
-                      }
-                      | term MOD multiplicative_expr 
-                      {
-                        ostringstream oss;
-                        oss << $1.code << $3.code;
-                        string x = new_temp();
-                        oss << ". " << x << endl;
-                        oss << "% " << x << ", " << $1.result_id << ", " << $3.result_id << endl;
-                        $$.code = strdup(oss.str().c_str());
-                        $$.result_id = strdup(x.c_str());
-                      }
-                      ;
-term:           var
-                {
-                  
-                  $$.result_id = $1.result_id;
-                }
-                | NUMBER
-                {
-			      $$.code = "";		 	
-                  $$.result_id = strdup(to_string($1).c_str());
-                }
-                | L_PAREN expression R_PAREN 
-                {
-				  $$.code = $2.code;
-				  $$.result_id = $2.result_id;
-				}
-                | SUB var 
-                {
-					ostringstream oss;
-					oss << "- " << $2.result_id << endl;
-					$$.result_id = strdup(oss.str().c_str());
-				}
-                | SUB NUMBER 
-                {
-					ostringstream oss;
-				    $$.result_id = strdup(to_string($2).c_str());
-					oss << "- " << $$.result_id << endl;
-					$$.result_id = strdup(oss.str().c_str());
-					$$.code = "";
-				}
-                | SUB L_PAREN expression R_PAREN 
-                {
-					$$.code = $3.code;
-					ostringstream oss;
-					oss << "- " << $3.result_id << endl;
-					$$.result_id = strdup(oss.str().c_str());
-				}
-                | ident L_PAREN termInnerOne R_PAREN 
-                {
-                  // Check if function has been defined (test 02)
-                  string temp = $1.result_id;
-                  if (functionSet.count(temp) == 0) {
-                    string errormessage;
-                    errormessage = "ERROR on line " + to_string(currLine) + ": function " + temp + " has not been defined\n";
-                    errors += errormessage;
-                  }
-                  
-                  ostringstream oss;
-                  oss << $3.code;
-                  string x = new_temp();
-                  oss << "param " << $3.result_id << endl;
-                  oss << ". " << x << endl;
-                  oss << "call " << $1.result_id << ", " << x << endl;
-                  $$.code = strdup(oss.str().c_str());
-                  $$.result_id = strdup(x.c_str());		  
-                }
-                ;
-termInnerOne:   expression COMMA termInnerOne 
-				{
-					ostringstream oss;
-					oss << $1.code << $3.code;
-					$$.code = strdup(oss.str().c_str());
-				}
-                | expression 
-                {
-                  $$.code = $1.code;
-                          $$.result_id = $1.result_id;
-                }
-                | 
-                {
-                  $$.code = "";
-                  $$.result_id = "";
-                }
-                ;
-var:            ident
-                { 
-                  // string temp = $1.result_id;
-                  // if (!variableSet.count(temp)) {
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " +  to_string(currLine) + ": use of undeclared variable " + temp + "\n";
-                  //   errors += errormessage;
-                  // } 
-                  
-                  $$.code = "";
-                  $$.result_id = $1.result_id;
-                }
-                | ident L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-                {
-                  // string temp = $1.result_id;
-                  // if (variableSet.count(temp) != 0) {
-                  //   string errormessage;
-                  //   errormessage = "ERROR on line " +  to_string(currLine) + ": use of undeclared variable " + temp + "\n";
-                  //   errors += errormessage;
-                  // } 
-                  
-                  $$.arr_name = $1.result_id;
-                  $$.result_id = $3.result_id;
-                  $$.is_array = TRUE;
-                  $$.code = $3.code;
-                }
-                ;
+            
 %%
 
-void yyerror(const char* s) {
-   printf("ERROR: %s at symbol \"%s\" on line %d, col %d\n", s, yytext, currLine, currPos);
+void print_test(string o){
+    cout << "\n---------TEST-----------\n"
+        << o
+        << "\n----------END -----------\n";
+}
+
+//void print_test(stringstream &o){
+//    cout << "\n---------TEST-----------\n"
+//        << o.str()
+//        << "\n----------END -----------\n";
+//}
+
+string gen_code(string *res, string op, string *val1, string *val2){
+    if(op == "!"){
+        return op + " " + *res + ", " + *val1 + "\n";
+    }
+    else{
+        return op + " " + *res + ", " + *val1 + ", "+ *val2 +"\n";
+    }
+}
+
+string to_string(char* s){
+    ostringstream c;
+    c << s;
+    return c.str();
+}
+
+string to_string(int s){
+    ostringstream c;
+    c << s;
+    return c.str();
+}
+string go_to(string *s){
+    return ":= "+ *s + "\n"; 
+}
+string dec_label(string *s){
+    return ": " +*s + "\n"; 
+}
+string dec_temp(string *s){
+    return ". " +*s + "\n"; 
+}
+string * new_temp(){
+    string * t = new string();
+    ostringstream conv;
+    conv << tempi;
+    *t = "__temp__"+ conv.str();
+    tempi++;
+    return t;
+}
+string * new_label(){
+    string * t = new string();
+    ostringstream conv;
+    conv << templ;
+    *t = "__label__"+ conv.str();
+    templ++;
+    return t;
+}
+                    //printf("expression_2 -> ADD mult_expr expression_2\n");
+                    //$$.code = $2.code;
+                    //*($$.code) << $3.code->str();
+                    //if($3.op == NULL){
+                    //    $$.place = $2.place;
+                    //    $$.op = new string();
+                    //    *$$.op = "+";
+                    //}
+                    //else{
+                    //    $$.place = new_temp();
+                    //    $$.op = new string();
+                    //    *$$.op = "+";
+
+                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
+                    //} 
+                    // 1 + i - j
+ 
+void expression_code( Terminal &DD, Terminal D2, Terminal D3, string op){
+    DD.code = D2.code;
+    *(DD.code) << D3.code->str();
+    if(D3.op == NULL){
+        DD.place = D2.place;
+        DD.op = new string();
+        *DD.op = op;
+    }
+    else{
+        //cout << "IN ELSE" << endl;
+        DD.place = new_temp();
+        DD.op = new string();
+        *DD.op = op;
+
+        *(DD.code) << dec_temp(DD.place)<< gen_code(DD.place , *D3.op, D2.place, D3.place);
+    } 
+}
+
+
+void push_map(string name, Var v){
+    //cout << "pushing map" << endl;
+    if(var_map.find(name) == var_map.end()){
+        var_map[name] = v;
+    }
+    else{
+        string tmp = "ERROR: " + name + " already exists";
+        yyerror(tmp.c_str());
+    }
+}
+bool check_map(string name){
+    if(var_map.find(name) == var_map.end()){
+        return false;
+    }
+    return true;
+}
+void check_map_dec(string name){
+    if(!check_map(name)){
+        string tmp = "ERROR: \"" + name + "\" does not exist";
+        yyerror(tmp.c_str());
+    }
+}
+
+//void print_error(string s){
+//    extern int line_cnt;
+//    extern int cursor_pos;
+//    cout << ">>> Error
+//}
+
+
+//int main(int argc, char **argv) {
+//    if ( (argc > 1) && (yyin = fopen(argv[1],"r")) == NULL){
+//        //printf("syntax: %s filename\n", argv[0]);
+//        return 1;
+//    }
+//    yyparse();
+//    return 0;
+//}
+//
+int yyerror(const char *s)
+{
+    extern int line_cnt;
+    extern int cursor_pos;
+    success = false;
+    printf(">>> Line %d, position %d: %s\n",line_cnt,cursor_pos,s);
+    return -1;
+    //return yyerror(string(s));
+}
+
+
+int main(int argc, char **argv) {
+
+    if ( (argc > 1) && (myin = fopen(argv[1],"r")) == NULL){
+        printf("syntax: %s filename\n", argv[0]);
+        return 1;
+    }
+
+    //    for(int i = 0; i < argc; ++i){
+    //        cout << argv[i] << endl;
+    //    }
+
+    yyparse();
+
+    //all_code << program_code->str();
+
+    if(success){
+        ofstream file;
+        file.open("mil_code.mil");
+        file << all_code->str();
+        file.close();
+    }
+    else{
+        cout << "***Errors exist, fix to compile code***" << endl;
+    }
+
+
+    return 0;
 }
