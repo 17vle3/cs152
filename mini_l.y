@@ -35,7 +35,7 @@ stack<Loop> loop_stack;
 
 %union{
     int       int_val;
-    char str_val[256];
+    char*     str_val;
 
     //enum Type {INT, INT_ARR};
 
@@ -46,26 +46,6 @@ stack<Loop> loop_stack;
     struct Terminal Terminal;
 
 
-//    struct {
-//       stringstream *code;
-//       //location
-//       string *place;
-//       string *value;
-//       string *offset;
-//       // branches
-//       string *op;
-//       string *begin;
-//       string *parent;
-//       string *end;
-//       // type
-//       //uint val;
-//       Type type;
-//       int length;
-//       string *index;
-//       // idents and vars
-//       vector<string> *ids;
-//       vector<Var> *vars; 
-//    } Terminal;
 
 
 }
