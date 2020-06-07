@@ -8,12 +8,12 @@ int yyerror(char *s);
    
 %%
 function	currPos += yyleng; return FUNCTION; 
-beginparams	currPos += yyleng; return BEGIN_PARAMS; 
-endparams	currPos += yyleng; return END_PARAMS; 
-beginlocals	currPos += yyleng; return BEGIN_LOCALS;
-endlocals	currPos += yyleng; return END_LOCALS;
-beginbody	currPos += yyleng; return BEGIN_BODY; 
-endbody		currPos += yyleng; return END_BODY; 
+beginparams	currPos += yyleng; return BEGINPARAMS; 
+endparams	currPos += yyleng; return ENDPARAMS; 
+beginlocals	currPos += yyleng; return BEGINLOCALS;
+endlocals	currPos += yyleng; return ENDLOCALS;
+beginbody	currPos += yyleng; return BEGINBODY; 
+endbody		currPos += yyleng; return ENDBODY; 
 integer		currPos += yyleng; return INTEGER; 
 array		currPos += yyleng; return ARRAY;
 of		currPos += yyleng; return OF; 
@@ -54,10 +54,10 @@ return		return RETURN; currPos += yyleng;
 ";"		return SEMICOLON; currPos += yyleng;
 ":"		return COLON; currPos += yyleng;
 ","		return COMMA; currPos += yyleng;
-"("		return L_PAREN; currPos += yyleng;
-")"		return R_PAREN; currPos += yyleng;
-"["		return L_SQUARE_BRACKET; currPos += yyleng;
-"]"		return R_SQUARE_BRACKET; currPos += yyleng;
+"("		return LPAREN; currPos += yyleng;
+")"		return RPAREN; currPos += yyleng;
+"["		return LSQUARE; currPos += yyleng;
+"]"		return RSQUARE; currPos += yyleng;
 ":="		return ASSIGN; currPos += yyleng;
 
 [0-9]+				       currPos += yyleng; yylval.int_val = atoi(yytext); return NUMBER;
