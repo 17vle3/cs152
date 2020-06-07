@@ -197,9 +197,13 @@ declaration:    IDENT declaration_2 {
                 ;
 
 declaration_2:  COMMA IDENT declaration_2 {
+                    //printf("declaration_2 -> COMMA IDENT declaration_2\n");
                     $$.code = $3.code;
                     $$.type = $3.type;
                     $$.length = $3.length;
+                    //TODO: add variable to symbol_table
+                    //TODO: check if symbol already exists
+                    //TODO: check if array size <= 0
                     $$.vars = $3.vars;
                     Var v = Var();
                     v.type = $3.type;
@@ -228,8 +232,12 @@ declaration_2:  COMMA IDENT declaration_2 {
                             string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
                             yyerror(tmp.c_str());
                         }
+                    }else{
+                        //printf("================ ERRRR\n");
+                    }
                 }
                 | COLON declaration_3 INTEGER {
+                    //printf("declaration_2 -> COLON declaration_3 INTEGER\n");
                     $$.code = $2.code;
                     $$.type = $2.type;
                     $$.length = $2.length;
