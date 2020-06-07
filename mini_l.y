@@ -6,7 +6,7 @@
 //#include <stdio.h>
 //#define YY_NO_UNPUT
 //int yyparse();
-void yyerror(const char* s);
+int yyerror(const char* s);
  extern int currLine;
  extern int currPos;
 int yylex(void);
@@ -1092,9 +1092,9 @@ void check_map_dec(string name){
 //}
 //
 
-void yyerror(const char *s) {
+int yyerror(const char *s) {
    printf("** Line %d, position %d: %s\n", currLine, currPos, s);
-   exit(1);
+   return -1;
 }
 int main(int argc, char **argv) {
 
