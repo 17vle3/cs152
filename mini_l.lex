@@ -60,11 +60,11 @@ return		return RETURN; currPos += yyleng;
 "]"		return RSQUARE; currPos += yyleng;
 ":="		return ASSIGN; currPos += yyleng;
 
-[0-9]+				       currPos += yyleng; yylval.int_val = atoi(yytext); return NUMBER;
+[0-9]+				       currPos += yyleng; yylval.val = atoi(yytext); return NUMBER;
 [0-9_][a-zA-Z0-9_]*[a-zA-Z0-9_]        printf("Error at line %d, column %d: Identifier \"%s\" must begin with a letter\n",currLine,currPos,yytext); currPos += yyleng; exit(0);
 [a-zA-Z][a-zA-Z0-9_]*[_]               printf("Error at line %d, column %d: Identifier \"%s\" cannot end with an underscore\n",currLine,currPos,yytext);currPos += yyleng;exit(0); 
-[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]       currPos += yyleng; strcpy(yylval.str_val,yytext); return IDENT;
-[a-zA-Z][a-zA-Z0-9]*		       currPos += yyleng; strcpy(yylval.str_val,yytext); return IDENT;
+[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]       currPos += yyleng; strcpy(yylval.idval,yytext); return IDENT;
+[a-zA-Z][a-zA-Z0-9]*		       currPos += yyleng; strcpy(yylval.idval,yytext); return IDENT;
 
 [ ]             currPos += yyleng;
 [\t]+		currPos += yyleng;
