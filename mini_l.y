@@ -3,10 +3,9 @@
 
 %{
 #include "heading.h"
-//#include <stdio.h>
-//#define YY_NO_UNPUT
-//int yyparse();
 void yyerror(const char* s);
+ extern int currLine;
+ extern int currPos;
 int yylex(void);
 stringstream *all_code;
 FILE * myin;
