@@ -1073,33 +1073,15 @@ void check_map_dec(string name){
     }
 }
 
-//void print_error(string s){
-//    extern int line_cnt;
-//    extern int cursor_pos;
-//    cout << ">>> Error
-//}
-
-
-//int main(int argc, char **argv) {
-//    if ( (argc > 1) && (yyin = fopen(argv[1],"r")) == NULL){
-//        //printf("syntax: %s filename\n", argv[0]);
-//        return 1;
-//    }
-//    yyparse();
-//    return 0;
-//}
-//
 int yyerror(const char *s)
 {
-    extern int line_cnt;
-    extern int cursor_pos;
+    extern int currLine;
+    extern int currPos;
     success = false;
-    printf(">>> Line %d, position %d: %s\n",line_cnt,cursor_pos,s);
+    printf(">>> Line %d, position %d: %s\n",currLine,currPos,s);
     return -1;
     //return yyerror(string(s));
 }
-
-
 int main(int argc, char **argv) {
 
     if ( (argc > 1) && (myin = fopen(argv[1],"r")) == NULL){
@@ -1107,13 +1089,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    //    for(int i = 0; i < argc; ++i){
-    //        cout << argv[i] << endl;
-    //    }
 
     yyparse();
 
-    //all_code << program_code->str();
 
     if(success){
         ofstream file;
