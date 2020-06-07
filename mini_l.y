@@ -3,9 +3,6 @@
 
 %{
 #include "heading.h"
-//#include <stdio.h>
-//#define YY_NO_UNPUT
-//int yyparse();
 int yyerror(const char* s);
 int yylex(void);
 stringstream *all_code;
@@ -45,38 +42,10 @@ stack<Loop> loop_stack;
     }NonTerminal;
 
     struct Terminal Terminal;
-
-
-//    struct {
-//       stringstream *code;
-//       //location
-//       string *place;
-//       string *value;
-//       string *offset;
-//       // branches
-//       string *op;
-//       string *begin;
-//       string *parent;
-//       string *end;
-//       // type
-//       //uint val;
-//       Type type;
-//       int length;
-//       string *index;
-//       // idents and vars
-//       vector<string> *ids;
-//       vector<Var> *vars; 
-//    } Terminal;
-
-
 }
 
 %error-verbose
-//%skeleton "lalr1.cc"
-//%require "3.0.4"
-//%define api.token.constructor
-//%define api.value.type variant
-//%define parse.assert
+
 
 %token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
 %token INTEGER ARRAY OF 
@@ -115,12 +84,6 @@ program:    function program {
             ;
 
 function:   FUNCTION b_func SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2 {
-                //printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LOCALS decl_loop END_LOCALS BEGIN_BODY statement SEMICOLON function_2\n");
-                //IDENT = $2
-                //decl_loop = $5
-                //decl_loop = $8
-                //statement = $11
-                //func_2 = $13
                 $$.code = new stringstream(); 
                 string tmp = *$2.place;
                 if( tmp.compare("main") == 0){
@@ -141,7 +104,6 @@ function:   FUNCTION b_func SEMICOLON BEGIN_PARAMS decl_loop END_PARAMS BEGIN_LO
             }
             ;
 b_func: IDENT {
-            //cout << "b_func" << endl;
             string tmp = $1;
             Var myf = Var();
             myf.type = FUNC;
@@ -150,11 +112,9 @@ b_func: IDENT {
             }
             $$.place = new string();
             *$$.place = tmp;
-            //cout << "end b_func" << endl;
         };
 
 function_2: statement SEMICOLON function_2 {
-                //printf("function_2 -> statement SEMICOLON function_2\n");
                 $$.code = $1.code;
                 *($$.code) << $3.code->str();
               } 
@@ -230,32 +190,17 @@ declaration:    IDENT declaration_2 {
                             string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
                             yyerror(tmp.c_str());
                         }
-                        //if(var_map.find($1) == var_map.end()){
-                        //    string s = $1;
-                        //    var_map[s] = v;
-                        //}
-                        //else{
-                        //    yyerror("");
-                        //}
                     }else{
                             yyerror("ERROR: invalid type");
                     }
-                    //print_test(to_string($$.vars->size()));
-                    //for(int i = 0; i < $$.vars->size(); ++i){
-                    //    print_test("type:" + to_string((*$$.vars)[i].type) + "\nlength:" + to_string((*$$.vars)[i].length) + "\nplace:" + *(*$$.vars)[i].place);
-                    //}
 
                 }
                 ;
 
 declaration_2:  COMMA IDENT declaration_2 {
-                    //printf("declaration_2 -> COMMA IDENT declaration_2\n");
                     $$.code = $3.code;
                     $$.type = $3.type;
                     $$.length = $3.length;
-                    //TODO: add variable to symbol_table
-                    //TODO: check if symbol already exists
-                    //TODO: check if array size <= 0
                     $$.vars = $3.vars;
                     Var v = Var();
                     v.type = $3.type;
@@ -284,12 +229,8 @@ declaration_2:  COMMA IDENT declaration_2 {
                             string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
                             yyerror(tmp.c_str());
                         }
-                    }else{
-                        //printf("================ ERRRR\n");
-                    }
                 }
                 | COLON declaration_3 INTEGER {
-                    //printf("declaration_2 -> COLON declaration_3 INTEGER\n");
                     $$.code = $2.code;
                     $$.type = $2.type;
                     $$.length = $2.length;
@@ -298,7 +239,6 @@ declaration_2:  COMMA IDENT declaration_2 {
                 ;
 
 declaration_3:  ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF{
-                    //printf("declaration_3 -> ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF\n");
                     $$.code = new stringstream();
                     $$.vars = new vector<Var>();
                     $$.type = INT_ARR;
