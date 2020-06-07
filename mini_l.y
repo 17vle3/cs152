@@ -105,7 +105,6 @@ b_func: IDENT {
             }
             $$.place = new string();
             *$$.place = tmp;
-            //cout << "end b_func" << endl;
         };
 
 function_2: statement SEMICOLON function_2 {
@@ -185,13 +184,9 @@ declaration:    IDENT declaration_2 {
                 ;
 
 declaration_2:  COMMA IDENT declaration_2 {
-                    //printf("declaration_2 -> COMMA IDENT declaration_2\n");
                     $$.code = $3.code;
                     $$.type = $3.type;
                     $$.length = $3.length;
-                    //TODO: add variable to symbol_table
-                    //TODO: check if symbol already exists
-                    //TODO: check if array size <= 0
                     $$.vars = $3.vars;
                     Var v = Var();
                     v.type = $3.type;
@@ -221,11 +216,9 @@ declaration_2:  COMMA IDENT declaration_2 {
                             yyerror(tmp.c_str());
                         }
                     }else{
-                        //printf("================ ERRRR\n");
                     }
                 }
                 | COLON declaration_3 INTEGER {
-                    //printf("declaration_2 -> COLON declaration_3 INTEGER\n");
                     $$.code = $2.code;
                     $$.type = $2.type;
                     $$.length = $2.length;
@@ -301,12 +294,10 @@ statement_1:    var ASSIGN expression{
                     else{
                         yyerror("Error: expression is null.");
                     }
-                    //print_test($$.code->str());
                 }
                 ;
 
 statement_2:    IF bool_exp THEN stmt_loop statement_21 ENDIF{
-                    //cout << "statement -> IF bool_exp THEN stmt_loop statement_21 ENDIF\n" << endl;
                     $$.code = new stringstream();
                     $$.begin = new_label();
                     $$.end = new_label();
@@ -334,20 +325,10 @@ statement_21:   {
                 ;
 
 statement_3:    WHILE bool_exp b_loop BEGINLOOP stmt_loop ENDLOOP{
-                    //cout << "statement -> WHILE bool_exp BEGINLOOP stmt_loop ENDLOOP\n" << endl;
                     $$.code = new stringstream();
                     $$.begin = $3.begin;
                     $$.parent = $3.parent;
                     $$.end = $3.end;
-                    //$$.begin = new_label();
-                    //$$.parent = new_label();
-                    //$$.end = new_label();
-                    //Loop l = Loop();
-                    //l.parent = $$.parent;
-                    //l.begin = $$.begin;
-                    //l.end = $$.end;
-                    ////cout << "\n\nBEFORE:" << loop_stack.size();
-                    //loop_stack.push(l);
                     *($$.code) << dec_label($$.parent) << $2.code->str() << "?:= " << *$$.begin << ", " << *$2.place << "\n" 
                     << go_to($$.end) << dec_label($$.begin) << $5.code->str() << go_to($$.parent) << dec_label($$.end);
                     loop_stack.pop();
@@ -356,24 +337,18 @@ statement_3:    WHILE bool_exp b_loop BEGINLOOP stmt_loop ENDLOOP{
                 ;
 
 b_loop:         {
-                    //cout << "bLOOP" << endl;
                     $$.code = new stringstream();
                     $$.begin = new_label();
                     $$.parent = new_label();
                     $$.end = new_label();
-                    //cout << "add loop" << endl;
                     Loop l = Loop();
                     l.parent = $$.parent;
                     l.begin = $$.begin;
                     l.end = $$.end;
-                    //cout << "\n\nBEFORE:" << loop_stack.size();
-                    //cout << "push loop: " << loop_stack.size() << endl;
                     loop_stack.push(l);
-                    //cout << "end bloop" << endl;
                 };
 
 statement_4:    DO b_loop BEGINLOOP stmt_loop ENDLOOP WHILE bool_exp{
-                    //cout << "statement -> DO BEGINLOOP stmt_loop ENDLOOP WHILE bool_exp\n" << endl;
                     $$.code = new stringstream();
                     $$.begin = $2.begin;
                     $$.parent = $2.parent;
@@ -392,7 +367,6 @@ statement_5:    READ var statement_51{
                        *($$.code) << ".[]< " << *$2.place << ", " << $2.index << "\n"; 
                     }
                     *($$.code) << $3.code->str();
-                    //print_test($$.code->str());
                 }
                 ;
 
@@ -405,7 +379,6 @@ statement_51:   COMMA var statement_51 {
                        *($$.code) << ".[]< " << *$2.place << ", " << $2.index << "\n"; 
                     }
                     *($$.code) << $3.code->str();
-                    //print_test($$.code->str());
                 }
                 | {
                     $$.code = new stringstream();
@@ -440,23 +413,17 @@ statement_61:   COMMA var statement_61{
                 ;
 
 bool_exp:       rel_and_exp bool_exp2{
-                    //cout << "bool_exp -> rel_and_exp bool_exp2\n" << endl;
                     $$.code = $1.code;
                     *($$.code) << $2.code->str();
                     if($2.op != NULL && $2.place != NULL)
                     {                        
                         $$.place = new_temp();
-                        //cout << "\n\nOP:" << *$2.op << "\nPLACE:" << *$1.place << "\n$2PLACE:" << *$2.place << endl;
                        *($$.code) << dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $2.place);
-                        //cout << "\n\nOP:" << $2.op << "\nPLACE:" << $1.place << "\n$2PLACE:" << $2.place << endl;
                     }
                     else{
-                        //cout << "ELSE" << endl;
                         $$.place = $1.place;
                         $$.op = $1.op;
                     }
-                    //print_test($$.code->str());
-                    //cout << "END OF BOOL" << endl;
                 }
                 ;
 
@@ -466,7 +433,6 @@ bool_exp2:      OR rel_and_exp bool_exp2{
 
                 }
                 |{
-                    //cout << "bool_exp2 -> EPSILON\n" << endl;
                     $$.code = new stringstream();
                     $$.op = NULL;
                  }
@@ -529,7 +495,6 @@ relation_exp_s: expression comp expression{
                     *$$.place = "0";
                   }
                 | LPAREN bool_exp RPAREN{
-                    //cout << "relation_exp_s -> LPAREN bool_exp RPAREN\n" << endl;
                     $$.code = $2.code;
                     $$.place = $2.place;
                 }
@@ -589,7 +554,6 @@ expression_2:   ADD mult_expr expression_2 {
                   }
                 | SUB mult_expr expression_2{
                     expression_code($$,$2,$3,"-");
-                    //print_test("SUB\n" +$$.code->str());
                   }
                 | {
                     $$.code = new stringstream();
@@ -795,7 +759,6 @@ string * new_label(){
         *DD.op = op;
     }
     else{
-        //cout << "IN ELSE" << endl;
         DD.place = new_temp();
         DD.op = new string();
         *DD.op = op;
