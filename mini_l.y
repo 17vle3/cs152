@@ -38,7 +38,7 @@ stack<Loop> loop_stack;
 
 %union{
     int       int_val;
-    char*     str_val;
+    char     str_val[256];
 
     //enum Type {INT, INT_ARR};
 
