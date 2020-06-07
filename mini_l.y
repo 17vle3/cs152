@@ -72,7 +72,6 @@ program:    function program {
                 all_code = $$.code;
               } 
             | {
-                //printf("program -> EPSILON\n");
                 $$.code = new stringstream();
               }
             ;
@@ -114,7 +113,6 @@ function_2: statement SEMICOLON function_2 {
                 *($$.code) << $3.code->str();
               } 
             | ENDBODY {
-                //printf("function_2 -> ENDBODY\n");
                 $$.code = new stringstream();
                 *($$.code) << "endfunc\n";
               }
@@ -129,7 +127,6 @@ decl_loop:  declaration SEMICOLON decl_loop {
                 *($$.code) << $3.code->str();
                 } 
             | {
-                //printf("decl_loop -> EPSILON\n");
                 $$.code = new stringstream();
                 $$.vars = new vector<Var>();
               }
@@ -140,7 +137,6 @@ stmt_loop:  statement SEMICOLON stmt_loop {
                 *($$.code) << $3.code->str();
               } 
             | {
-                //printf("stmt_loop -> EPSILON\n");
                 $$.code = new stringstream();
               }
             ;
@@ -220,9 +216,6 @@ declaration_2:  COMMA IDENT declaration_2 {
                             string tmp = "Error: Symbol \"" + s + "\" is multiply-defined";
                             yyerror(tmp.c_str());
                         }
-                    }else{
-                        //printf("================ ERRRR\n");
-                    }
                 }
                 | COLON declaration_3 INTEGER {
                     $$.code = $2.code;
@@ -281,8 +274,6 @@ statement:      statement_1 {
                 }
 
 statement_1:    var ASSIGN expression{
-                    //printf("statement -> var ASSIGN expression\n");
-                    //TODO: check if var was declared?
                     $$.code = $1.code;
                     *($$.code) << $3.code->str();
                     if($1.type == INT && $3.type == INT){
@@ -631,47 +622,38 @@ mult_expr_2:    MULT term mult_expr_2{
                 ;
 
 term:           SUB term_2{
-                    //printf("term -> SUB term_2\n");
                     $$.code = $2.code;
                     $$.place = new_temp();
                     string tmp = "-1";
                     *($$.code)<< dec_temp($$.place) << gen_code($$.place, "*",$2.place, &tmp );
                   }
                 | term_2{
-                    //printf("term -> term_2\n");
                     $$.code = $1.code;
                     $$.place = $1.place;
                   }
                 | term_3{
-                    //printf("term -> term_3\n");
                     $$.code = $1.code;
                     $$.place = $1.place;
                   }
                 ;
 
 term_2:         var{
-                    //printf("term_2 -> var\n");
-                    //TODO: check if var was declared?
                     $$.code = $1.code;
                     $$.place= $1.place;
                     $$.index = $1.index;
                   }
                 | NUMBER{
-                    //printf("term_2 -> NUMBER\n");
                     $$.code = new stringstream();
                     $$.place = new string();
                     *$$.place = to_string($1);
                   }
                 | LPAREN expression RPAREN{
-                    //printf("term_2 -> LPAREN expression RPAREN\n");
                     $$.code = $2.code;
                     $$.place = $2.place;
                   }
                 ;
 
 term_3:         IDENT LPAREN term_31 RPAREN{
-                    //printf("term_3 -> IDENT LPAREN term_31 RPAREN\n");
-                    //TODO: check if var was declared?
                     $$.code = $3.code;
                     $$.place = new_temp();
                     *($$.code) << dec_temp($$.place)<< "call " << $1 << ", " << *$$.place << "\n";
@@ -681,31 +663,24 @@ term_3:         IDENT LPAREN term_31 RPAREN{
                 ;
 
 term_31:        expression term_32{
-                    //printf("term_31-> expression term_32\n");
-                    //TODO: check if function declared?
                     $$.code = $1.code;
                     *($$.code) << $2.code->str();
                     *($$.code) << "param " << *$1.place << "\n";
                 } 
                 | {
-                    //printf("term_31 -> EPSILON\n");
                     $$.code = new stringstream(); 
                   }
                 ;
 term_32:        COMMA term_31{
-                    //printf("term_32 -> COMMA term_31\n");
                     $$.code = $2.code;
                 } 
                 | {
-                    //printf("term_32 -> EPSILON\n");
                     $$.code = new stringstream();
                   }
 
 var:            IDENT var_2{
-                    //printf("var -> IDENT var_2\n");
                     $$.code = $2.code;
                     $$.type = $2.type;
-                    //TODO: check if var was declared?
                     string tmp = $1;
                     check_map_dec(tmp);
                     if(check_map(tmp) && var_map[tmp].type != $2.type){
@@ -736,15 +711,12 @@ var:            IDENT var_2{
                 ;
 
 var_2:          LSQUARE  expression RSQUARE {
-                    //TODO: check if var was declared?
-                    //printf("var_2 -> LSQUARE  expression RSQUARE\n");
                     $$.code = $2.code;
                     $$.place = NULL;
                     $$.index = $2.place;
                     $$.type = INT_ARR;
                 }
                 |{
-                    //printf("var_2 -> EPSILON\n");
                     $$.code = new stringstream();
                     $$.index = NULL;
                     $$.place = NULL;
@@ -759,12 +731,6 @@ void print_test(string o){
         << o
         << "\n----------END -----------\n";
 }
-
-//void print_test(stringstream &o){
-//    cout << "\n---------TEST-----------\n"
-//        << o.str()
-//        << "\n----------END -----------\n";
-//}
 
 string gen_code(string *res, string op, string *val1, string *val2){
     if(op == "!"){
@@ -811,24 +777,8 @@ string * new_label(){
     templ++;
     return t;
 }
-                    //printf("expression_2 -> ADD mult_expr expression_2\n");
-                    //$$.code = $2.code;
-                    //*($$.code) << $3.code->str();
-                    //if($3.op == NULL){
-                    //    $$.place = $2.place;
-                    //    $$.op = new string();
-                    //    *$$.op = "+";
-                    //}
-                    //else{
-                    //    $$.place = new_temp();
-                    //    $$.op = new string();
-                    //    *$$.op = "+";
-
-                    //    *($$.code)<< dec_temp($$.place) << gen_code($$.place , *$$.op, $2.place, $3.place);
-                    //} 
-                    // 1 + i - j
  
-void expression_code( Terminal &DD, Terminal D2, Terminal D3, string op){
+ void expression_code( Terminal &DD, Terminal D2, Terminal D3, string op){
     DD.code = D2.code;
     *(DD.code) << D3.code->str();
     if(D3.op == NULL){
@@ -848,7 +798,6 @@ void expression_code( Terminal &DD, Terminal D2, Terminal D3, string op){
 
 
 void push_map(string name, Var v){
-    //cout << "pushing map" << endl;
     if(var_map.find(name) == var_map.end()){
         var_map[name] = v;
     }
@@ -870,23 +819,6 @@ void check_map_dec(string name){
     }
 }
 
-//void print_error(string s){
-//    extern int line_cnt;
-//    extern int cursor_pos;
-//    cout << ">>> Error
-//}
-
-
-//int main(int argc, char **argv) {
-//    if ( (argc > 1) && (yyin = fopen(argv[1],"r")) == NULL){
-//        //printf("syntax: %s filename\n", argv[0]);
-//        return 1;
-//    }
-//    yyparse();
-//    return 0;
-//}
-//
-
 int yyerror(const char *s) {
    success = false;
    printf("** Line %d, position %d: %s\n", currLine, currPos, s);
@@ -899,13 +831,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    //    for(int i = 0; i < argc; ++i){
-    //        cout << argv[i] << endl;
-    //    }
-
     yyparse();
-
-    //all_code << program_code->str();
 
     if(success){
         ofstream file;
@@ -920,4 +846,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
