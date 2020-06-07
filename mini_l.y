@@ -1,11 +1,5 @@
-/* Mini Calculator */
-/* calc.y */
-
 %{
 #include "heading.h"
-//#include <stdio.h>
-//#define YY_NO_UNPUT
-//int yyparse();
 int yyerror(const char* s);
  extern int currLine;
  extern int currPos;
@@ -40,45 +34,14 @@ stack<Loop> loop_stack;
     int       int_val;
     char     str_val[256];
 
-    //enum Type {INT, INT_ARR};
-
     struct {
         stringstream *code;
     }NonTerminal;
 
     struct Terminal Terminal;
-
-
-//    struct {
-//       stringstream *code;
-//       //location
-//       string *place;
-//       string *value;
-//       string *offset;
-//       // branches
-//       string *op;
-//       string *begin;
-//       string *parent;
-//       string *end;
-//       // type
-//       //uint val;
-//       Type type;
-//       int length;
-//       string *index;
-//       // idents and vars
-//       vector<string> *ids;
-//       vector<Var> *vars; 
-//    } Terminal;
-
-
 }
 
 %error-verbose
-//%skeleton "lalr1.cc"
-//%require "3.0.4"
-//%define api.token.constructor
-//%define api.value.type variant
-//%define parse.assert
 
 %token FUNCTION BEGINPARAMS ENDPARAMS BEGINLOCALS ENDLOCALS BEGINBODY ENDBODY
 %token INTEGER ARRAY OF 
