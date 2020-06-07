@@ -31,8 +31,8 @@ stack<Loop> loop_stack;
 %}
 
 %union{
-    int       int_val;
-    char     str_val[256];
+    int       val;
+    char     idval[256];
 
     struct {
         stringstream *code;
@@ -47,8 +47,8 @@ stack<Loop> loop_stack;
 %token  INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO BEGINLOOP ENDLOOP 
 %token  CONTINUE READ WRITE TRUE FALSE RETURN 
 %token  SEMICOLON COLON COMMA LPAREN RPAREN LSQUARE RSQUARE EQUAL
-%token <int_val> NUMBER
-%token <str_val> IDENT
+%token <val> NUMBER
+%token <idval> IDENT
 %left MULT DIV MOD ADD SUB 
 %left LT LTE GT GTE EQ NEQ
 %right NOT
