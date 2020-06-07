@@ -6,7 +6,7 @@
 //#include <stdio.h>
 //#define YY_NO_UNPUT
 //int yyparse();
-int yyerror(const char* s);
+void yyerror(const char* s);
  extern int currLine;
  extern int currPos;
 int yylex(void);
