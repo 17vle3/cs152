@@ -5,8 +5,6 @@ parser:		$mini_l.y mini_l.lex
 
 clean:
 		rm -f *.o *~ lex.c lex.yy.c bison.c tok.h y.tab.c y.tab.h y.output parser 
-		
-OBJS	= mini_l.y mini_l.lex  #bison.o lex.o main.o
 
-CC		= g++
-CFLAGS	= -g -Wall -ansi -pedantic
+test: 	parser
+		./mytest.sh
