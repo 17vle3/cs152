@@ -52,7 +52,7 @@ return		return RETURN; currPos += yyleng;
 		
 ";"		return SEMICOLON; currPos += yyleng;
 ":"		return COLON; currPos += yyleng;
-//"="		return EQUAL; currPos += yyleng;
+/**"="		return EQUAL; currPos += yyleng;**/
 ","		return COMMA; currPos += yyleng;
 "("		return L_PAREN; currPos += yyleng;
 ")"		return R_PAREN; currPos += yyleng;
@@ -60,11 +60,11 @@ return		return RETURN; currPos += yyleng;
 "]"		return R_SQUARE_BRACKET; currPos += yyleng;
 ":="		return ASSIGN; currPos += yyleng;
 
-[0-9]+					   currPos += yyleng; yylval.val = atof(yytext); return NUMBER;
-[0-9_][a-zA-Z0-9_]*[a-zA-Z0-9_]      printf("Error at line %d, column %d: Identifier \"%s\" must begin with a letter\n",currLine,currPos,yytext); currPos += yyleng; exit(0);
+[0-9]+				       currPos += yyleng; yylval.int_val = atof(yytext); return NUMBER;
+[0-9_][a-zA-Z0-9_]*[a-zA-Z0-9_]        printf("Error at line %d, column %d: Identifier \"%s\" must begin with a letter\n",currLine,currPos,yytext); currPos += yyleng; exit(0);
 [a-zA-Z][a-zA-Z0-9_]*[_]               printf("Error at line %d, column %d: Identifier \"%s\" cannot end with an underscore\n",currLine,currPos,yytext);currPos += yyleng;exit(0); 
-[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]	currPos += yyleng; yylval.idval = yytext; return IDENT;
-[a-zA-Z][a-zA-Z0-9]*			 currPos += yyleng; yylval.idval = yytext; return IDENT;
+[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]       currPos += yyleng; yylval.str_val = yytext; return IDENT;
+[a-zA-Z][a-zA-Z0-9]*		       currPos += yyleng; yylval.str_val = yytext; return IDENT;
 
 [ ]             currPos += yyleng;
 [\t]+		currPos += yyleng;
