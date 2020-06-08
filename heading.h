@@ -1,15 +1,10 @@
 #ifndef _heading_h_
 #define _heading_h_
-
 #define YY_NO_UNPUT
-
 #include <iostream>
-
 #include <vector>
 #include <stack>
 #include <map>
-
-
 #include <sstream>
 #include <fstream>
 #include <stdio.h>
@@ -18,7 +13,6 @@
 using namespace std;
 
 enum Type {INT,INT_ARR,FUNC};
-
 struct Var{
     string *place;
     string *value;
@@ -26,15 +20,12 @@ struct Var{
     Type type;
     int length;
     string *index;
-} ;
-
+};
 struct Loop{
     string *begin;
     string *parent;
     string *end;
 };
-
-
 struct Terminal{
    stringstream *code;
    string *place;
