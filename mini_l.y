@@ -1,20 +1,5 @@
 %{
 #include "heading.h"
-enum Type {INT,INT_ARR,FUNC};
-struct Var{
-    string *place;
-    string *value;
-    string *offset;
-    Type type;
-    int length;
-    string *index;
-};
-struct Loop{
-    string *begin;
-    string *parent;
-    string *end;
-};
-
 int yyerror(const char* s);
  extern int currLine;
  extern int currPos;
