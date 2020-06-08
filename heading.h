@@ -9,37 +9,4 @@
 #include <fstream>
 #include <stdio.h>
 #include <string>
-
 using namespace std;
-
-enum Type {INT,INT_ARR,FUNC};
-struct Var{
-    string *place;
-    string *value;
-    string *offset;
-    Type type;
-    int length;
-    string *index;
-};
-struct Loop{
-    string *begin;
-    string *parent;
-    string *end;
-};
-struct Terminal{
-   stringstream *code;
-   string *place;
-   string *value;
-   string *offset;
-   string *op;
-   string *begin;
-   string *parent;
-   string *end;
-   Type type;
-   int length;
-   string *index;
-   vector<string> *ids;
-   vector<Var> *vars; 
-};
-
-#endif
