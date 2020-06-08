@@ -46,12 +46,12 @@ extern int yydebug;
   enum yytokentype
   {
     FUNCTION = 258,
-    BEGIN_PARAMS = 259,
-    END_PARAMS = 260,
-    BEGIN_LOCALS = 261,
-    END_LOCALS = 262,
-    BEGIN_BODY = 263,
-    END_BODY = 264,
+    BEGINPARAMS = 259,
+    ENDPARAMS = 260,
+    BEGINLOCALS = 261,
+    ENDLOCALS = 262,
+    BEGINBODY = 263,
+    ENDBODY = 264,
     INTEGER = 265,
     ARRAY = 266,
     OF = 267,
@@ -59,41 +59,41 @@ extern int yydebug;
     THEN = 269,
     ENDIF = 270,
     ELSE = 271,
-    FOR = 272,
-    WHILE = 273,
-    DO = 274,
-    BEGINLOOP = 275,
-    ENDLOOP = 276,
-    CONTINUE = 277,
-    READ = 278,
-    WRITE = 279,
-    AND = 280,
-    OR = 281,
-    NOT = 282,
-    TRUE = 283,
-    FALSE = 284,
-    RETURN = 285,
-    SUB = 286,
-    ADD = 287,
-    MULT = 288,
-    DIV = 289,
-    MOD = 290,
-    EQ = 291,
-    NEQ = 292,
-    LT = 293,
-    GT = 294,
-    LTE = 295,
-    GTE = 296,
-    SEMICOLON = 297,
-    COLON = 298,
-    COMMA = 299,
-    L_PAREN = 300,
-    R_PAREN = 301,
-    L_SQUARE_BRACKET = 302,
-    R_SQUARE_BRACKET = 303,
-    ASSIGN = 304,
-    NUMBER = 305,
-    IDENT = 306
+    WHILE = 272,
+    DO = 273,
+    BEGINLOOP = 274,
+    ENDLOOP = 275,
+    CONTINUE = 276,
+    READ = 277,
+    WRITE = 278,
+    TRUE = 279,
+    FALSE = 280,
+    RETURN = 281,
+    SEMICOLON = 282,
+    COLON = 283,
+    COMMA = 284,
+    LPAREN = 285,
+    RPAREN = 286,
+    LSQUARE = 287,
+    RSQUARE = 288,
+    EQUAL = 289,
+    NUMBER = 290,
+    IDENT = 291,
+    MULT = 292,
+    DIV = 293,
+    MOD = 294,
+    ADD = 295,
+    SUB = 296,
+    LT = 297,
+    LTE = 298,
+    GT = 299,
+    GTE = 300,
+    EQ = 301,
+    NEQ = 302,
+    NOT = 303,
+    AND = 304,
+    OR = 305,
+    ASSIGN = 306
   };
 #endif
 
@@ -102,34 +102,18 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 56 "mini_l.y" /* yacc.c:1909  */
+#line 48 "mini_l.y" /* yacc.c:1909  */
 
-  int int_val;
-  char*	op_val;
-  
-  struct statement_semval {
-	 char *code;
-	 char *result_id;
-	 char *label;
-	 char *arr_size;
-	 char *arr_name;
-	 bool is_array;
-  } s;
+    int       val;
+    char     idval[256];
 
-  struct expression_semval {
-	 char *code;
-	 char *result_id;
-	 char *arr_size;
-	 char *arr_name;
-	 bool is_array;
-  } e;
+    struct {
+        stringstream *code;
+    }NonTerminal;
 
-  struct comp_semval {
-	 char *optr;
-  } c;
+    struct Terminal Terminal;
 
-
-#line 133 "y.tab.h" /* yacc.c:1909  */
+#line 117 "y.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;
