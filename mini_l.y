@@ -14,21 +14,7 @@ struct Loop{
     string *parent;
     string *end;
 };
-struct Terminal{
-   stringstream *code;
-   string *place;
-   string *value;
-   string *offset;
-   string *op;
-   string *begin;
-   string *parent;
-   string *end;
-   Type type;
-   int length;
-   string *index;
-   vector<string> *ids;
-   vector<Var> *vars; 
-};
+
 int yyerror(const char* s);
  extern int currLine;
  extern int currPos;
